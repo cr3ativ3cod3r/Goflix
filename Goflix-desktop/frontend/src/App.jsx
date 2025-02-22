@@ -1,11 +1,13 @@
 import { useState } from "react";
-import MoviePage from "./Movie_page/Movie_page";
+import {SplashScreen} from "./componenets/SplashScreen.jsx";
+import VideoShare from "./componenets/SelectFolder.jsx";
+
 
 function App() {
-  const [count, setCount] = useState(0);
-
   return (
-    <MoviePage />
+    <div className="min-h-screen bg-gradient-to-b from-blue-900 to-black text-white flex items-center justify-center">
+      <VideoShare />
+    </div>
   );
 }
 
