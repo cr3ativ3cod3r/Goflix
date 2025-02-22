@@ -1,9 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Open Sans', sans-serif;
+
+@font-face {
+    font-family: OSCL;
+    src: url(../src/assets/fonts/OpenSans_Condensed-Light.ttf);
+}
+
+@font-face {
+    font-family: OSCB;
+    src: url(../src/assets/fonts/OpenSans_Condensed-Bold.ttf);
+}
+
+
+@font-face {
+  font-family: Arizonia;
+  src: url(../src/assets/fonts/Arizonia-Regular.ttf);
 }
