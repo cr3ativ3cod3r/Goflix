@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-func getTempFolder() string {
+func GetTempFolder() string {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		fmt.Println("Couldn't get config dir")
