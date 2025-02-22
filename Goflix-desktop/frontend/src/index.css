@@ -1,3 +1,20 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+@font-face {
+    font-family: OSCL;
+    src: url(../src/assets/fonts/OpenSans_Condensed-Light.ttf);
+}
+
+@font-face {
+    font-family: OSCB;
+    src: url(../src/assets/fonts/OpenSans_Condensed-Bold.ttf);
+}
+
+
+@font-face {
+  font-family: Arizonia;
+  src: url(../src/assets/fonts/Arizonia-Regular.ttf);
+}
