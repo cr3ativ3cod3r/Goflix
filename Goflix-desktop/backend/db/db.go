@@ -38,6 +38,7 @@ func Connect() {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS movies (
 		id INTEGER PRIMARY KEY,
 		title TEXT NOT NULL,
+		path TEXT NOT NULL,
 		overview TEXT,
 		releasedate TEXT
 	);`)
@@ -68,7 +69,7 @@ func Connect() {
 	}
 }
 
-func AddMovieDetails(movie string) {
+func AddMovieDetails(movie string, path string) {
 	id, err := getMovieID(movie)
 	if err != nil {
 		fmt.Print("Movie not found")
@@ -82,8 +83,8 @@ func AddMovieDetails(movie string) {
 		fmt.Print("Credits not found")
 	}
 
-	insertDetailsSQL := `INSERT OR IGNORE INTO movies (id, title, overview, releasedate) VALUES (?, ?, ?, ?, ?)`
-	_, err3 := db.Exec(insertDetailsSQL, id, details.Title, details.Overview, details.ReleaseDate)
+	insertDetailsSQL := `INSERT OR IGNORE INTO movies (id, title, path, overview, releasedate) VALUES (?, ?, ?, ?, ?)`
+	_, err3 := db.Exec(insertDetailsSQL, id, details.Title, path, details.Overview, details.ReleaseDate)
 	if err3 != nil {
 		log.Println("Error inserting detaails:", err3)
 	}
@@ -204,4 +205,56 @@ func CreateChat() {
 	if err != nil {
 		log.Println("Error creating movies chats table:", err)
 	}
+}
+
+type MovieResponse struct {
+	Title       string `json:"title"`
+	Overview    string `json:"overview"`
+	ReleaseDate string `json:"release_date"`
+	Cast        []struct {
+		Name      string `json:"name"`
+		Character string `json:"character"`
+	} `json:"cast"`
+	Crew []struct {
+		Name string `json:"name"`
+		Job  string `json:"job"`
+	} `json:"crew"`
+}
+
+// Function to get all movie details as JSON
+func GetMovieInfo(movieName string) (string, error) {
+	// Fetch movie ID
+	id, err := getMovieID(movieName)
+	if err != nil {
+		return "", fmt.Errorf("movie not found: %v", err)
+	}
+
+	// Fetch movie details
+	details, err := getMovieDetails(id)
+	if err != nil {
+		return "", fmt.Errorf("movie details not found: %v", err)
+	}
+
+	// Fetch cast and crew details
+	credits, err := getMovieCredits(id)
+	if err != nil {
+		return "", fmt.Errorf("movie credits not found: %v", err)
+	}
+
+	// Create response struct
+	response := MovieResponse{
+		Title:       details.Title,
+		Overview:    details.Overview,
+		ReleaseDate: details.ReleaseDate,
+		Cast:        credits.Cast,
+		Crew:        credits.Crew,
+	}
+
+	// Convert to JSON
+	jsonResponse, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("error encoding JSON: %v", err)
+	}
+
+	return string(jsonResponse), nil
 }
