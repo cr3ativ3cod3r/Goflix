@@ -1,36 +1,69 @@
 package handlers
 
 import (
-	"Goflix-Desktop/backend/services"
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
+	"log"
+	"net/http"
+	"time"
 )
 
-func Conversion(filepath string) *os.File {
-	output := services.GetTempFolder() + "/" + filepath[strings.LastIndex(filepath, "/")+1:strings.LastIndex(filepath, ".mp4")] + ".m3u8"
-	command := exec.Command("ffmpeg",
-		"-i", filepath,
-		"-c:v", "libx264", // Use H.264 codec
-		"-c:a", "aac", // Use AAC audio codec
-		"-b:v", "2500k", // Video bitrate
-		"-b:a", "128k", // Audio bitrate
-		"-hls_time", "4", // Reduced segment duration for faster starts
-		"-hls_list_size", "0", // Keep all segments
-		"-hls_segment_filename", fmt.Sprintf("./stream/%s_%%d.ts", filepath[strings.LastIndex(filepath, "/")+1:strings.LastIndex(filepath, ".mp4")]), // Name segments
-		"-hls_playlist_type", "vod",
-		"-f", "hls", // Force HLS format
-		output)
-	error := command.Run()
-	if error != nil {
-		fmt.Print(error)
-	}
-	out, err := os.Open(output)
+const hlsOutputDir = "./hls"
 
+
+func startFFmpeg(inputFile string) {
+	cmd := exec.Command("ffmpeg",
+		"-i", inputFile,       
+		"-codec:v", "libx264", 
+		"-preset", "fast",
+		"-g", "48", "-keyint_min", "48",
+		"-sc_threshold", "0",
+		"-hls_time", "4",             
+		"-hls_list_size", "6",        
+		"-hls_segment_filename", hlsOutputDir+"/segment_%03d.ts", 
+		hlsOutputDir+"/playlist.m3u8", 
+	)
+
+	
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+
+	err := cmd.Start()
 	if err != nil {
-		fmt.Println("file cant be opened")
+		log.Fatalf("Failed to start ffmpeg: %v", err)
 	}
 
-	return out
+	
+	go func() {
+		err = cmd.Wait()
+		if err != nil {
+			log.Printf("ffmpeg exited: %v", err)
+		}
+	}()
+}
+
+
+func serveHLS() {
+	http.Handle("/", http.FileServer(http.Dir(hlsOutputDir)))
+	fmt.Println("HLS server running at http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func runStream(vidFile string) {
+	
+	err := os.MkdirAll(hlsOutputDir, os.ModePerm)
+	if err != nil {
+		log.Fatalf("Failed to create HLS directory: %v", err)
+	}
+
+	
+	videoFile := vidFile
+	startFFmpeg(videoFile)
+
+	
+	time.Sleep(5 * time.Second)
+
+	
+	serveHLS()
 }
