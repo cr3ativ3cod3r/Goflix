@@ -1,8 +1,8 @@
 package chats
 
 import (
+	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 
@@ -14,125 +14,97 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-// Global Variables
+// Global chat rooms mapped by host
 var (
-	clients   = make(map[*websocket.Conn]bool) // Active WebSocket clients
-	broadcast = make(chan []byte)              // Message queue
-	mu        sync.Mutex                       // Mutex for safe concurrent access
+	chatRooms = make(map[string]map[*websocket.Conn]bool) // {host: {conn1, conn2, ...}}
+	broadcast = make(chan Message)                        // Message queue
+	mu        sync.Mutex                                  // Mutex for safe concurrent access
 )
 
-// StartChatServer starts the WebSocket chat server
-func StartChatServer() string {
-	go handleMessages() // Start message broadcaster
-
-	http.HandleFunc("/ws", wsHandler)
-
-	// Run WebSocket server in a separate goroutine
-	go func() {
-		fmt.Println("Chat server started on http://localhost:8081/ws")
-		err := http.ListenAndServe(":8081", nil)
-		if err != nil {
-			fmt.Println("WebSocket server error:", err)
-		}
-	}()
-
-	return "Chat server started!"
+// Message struct to include sender, host, and content
+type Message struct {
+	Host    string `json:"host"`
+	Sender  string `json:"sender"`
+	Content string `json:"content"`
 }
 
-// WebSocket Connection Handler
-func wsHandler(w http.ResponseWriter, r *http.Request) {
+// WebSocket Connection Handler (Now handles multiple hosts)
+func WsHandler(w http.ResponseWriter, r *http.Request, host string) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println("Error upgrading:", err)
 		return
 	}
 
-	// Register new client
+	// Register new client under the specific host
 	mu.Lock()
-	clients[conn] = true
+	if chatRooms[host] == nil {
+		chatRooms[host] = make(map[*websocket.Conn]bool)
+	}
+	chatRooms[host][conn] = true
 	mu.Unlock()
 
 	// Listen for messages from this client
-	for {
-		_, message, err := conn.ReadMessage()
-		if err != nil {
-			fmt.Println("Error reading message:", err)
+	go func() {
+		for {
+			_, messageBytes, err := conn.ReadMessage()
+			if err != nil {
+				fmt.Println("Error reading message:", err)
 
-			// Remove client from active list
-			mu.Lock()
-			delete(clients, conn)
-			mu.Unlock()
-			break
+				mu.Lock()
+				delete(chatRooms[host], conn)
+				mu.Unlock()
+				conn.Close()
+				break
+			}
+
+			// Parse message as JSON
+			var msg Message
+			err = json.Unmarshal(messageBytes, &msg)
+			if err != nil {
+				fmt.Println("Invalid message format:", err)
+				continue
+			}
+
+			// Set host and forward message
+			msg.Host = host
+			broadcast <- msg
 		}
-
-		// Broadcast message to all clients
-		broadcast <- message
-	}
+	}()
 }
 
-// Handle message broadcasting to all clients
+// Handle message broadcasting to correct chat room
 func handleMessages() {
 	for {
 		msg := <-broadcast
 
+		// Convert message to JSON
+		msgBytes, err := json.Marshal(msg)
+		if err != nil {
+			fmt.Println("Error encoding message:", err)
+			continue
+		}
+
 		mu.Lock()
-		for client := range clients {
-			err := client.WriteMessage(websocket.TextMessage, msg)
+		for client := range chatRooms[msg.Host] {
+			err := client.WriteMessage(websocket.TextMessage, msgBytes)
 			if err != nil {
 				fmt.Println("Error writing message:", err)
 				client.Close()
-				delete(clients, client) // Remove disconnected client
+				delete(chatRooms[msg.Host], client) // Remove disconnected client
 			}
 		}
 		mu.Unlock()
 	}
 }
 
-//code for connecting clients
-
-var conn *websocket.Conn
-var messageCallback func(string) // Callback to send messages to frontend
-
-func ConnectToServer(url string) string {
-	var err error
-	conn, _, err = websocket.DefaultDialer.Dial(url, nil)
-	if err != nil {
-		log.Println("Error connecting to WebSocket:", err)
-		return "Failed to connect"
-	}
-	log.Println("Connected to WebSocket server")
-
-	go listenForMessages()
-
-	return "Connected"
+// Start chat message handling in a goroutine
+func InitChatServer() {
+	go handleMessages()
 }
 
-func SendMessageToServer(message string) string {
-	if conn == nil {
-		return "Not connected to server"
-	}
-	err := conn.WriteMessage(websocket.TextMessage, []byte(message))
-	if err != nil {
-		log.Println("Error sending message:", err)
-		return "Failed to send message"
-	}
-	return "Message sent"
-}
-
-func listenForMessages() {
-	for {
-		_, msg, err := conn.ReadMessage()
-		if err != nil {
-			log.Println("Error reading message:", err)
-			break
-		}
-
-		if messageCallback != nil {
-			messageCallback(string(msg))
-		}
-	}
-}
-
-func SetMessageCallback(callback func(string)) {
-	messageCallback = callback
-}
+// {
+// 	"sender": "Alice",
+// 	"content": "Hello from Alice!"
+// }
+// frontend input to websocket should be like this

@@ -2,6 +2,7 @@ package server
 
 import (
 	//"database/sql"
+	"Goflix-Desktop/backend/chats"
 	"Goflix-Desktop/backend/db"
 	"encoding/json"
 	"fmt"
@@ -28,6 +29,7 @@ func CreateServer() {
 	//r.HandleFunc("/home",Home)
 
 	fmt.Println("Server is running on http://localhost:8080")
+	http.HandleFunc("/{host}/chat", chatHandler)
 	log.Fatal(http.ListenAndServe(":8080", r))
 
 }
@@ -68,4 +70,10 @@ func HostHome(w http.ResponseWriter, r *http.Request) {
 
 func ClientHome(w http.ResponseWriter, r *http.Request) {
 
+}
+
+func chatHandler(w http.ResponseWriter, r *http.Request) {
+	host := mux.Vars(r)["host"]
+
+	chats.WsHandler(w, r, host)
 }
