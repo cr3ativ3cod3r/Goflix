@@ -189,3 +189,19 @@ func getMovieCredits(movieID int) (CreditResponse, error) {
 
 	return credits, nil
 }
+
+func CreateChat() {
+	dropTableSQL := `DROP TABLE IF EXISTS chat;`
+	_, err := db.Exec(dropTableSQL)
+	if err != nil {
+		log.Println("Error dropping tables:", err)
+	}
+
+	_, err = db.Exec(`CREATE TABLE chats (
+		username TEXT NOT NULL,
+		message TEXT NOT NULL
+	);`)
+	if err != nil {
+		log.Println("Error creating movies chats table:", err)
+	}
+}
