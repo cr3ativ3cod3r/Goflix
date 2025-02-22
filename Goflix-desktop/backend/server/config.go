@@ -2,6 +2,7 @@ package server
 
 import (
 	//"database/sql"
+	"Goflix-Desktop/backend/db"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,7 +12,8 @@ import (
 	//"modernc.org/sqlite"
 )
 
-func main() {
+func CreateServer() {
+	db.Connect()
 	// Create a new router
 	r := mux.NewRouter()
 
