@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import {GradientButton} from "../Component/GradientButton.jsx";
 
 // SVG Icon Components
 const FolderIcon = () => (
@@ -47,14 +48,26 @@ const DatabaseIcon = () => (
     </svg>
 );
 
-const VideoShare = () => {
+const VideoShare = ( onComplete ) => {
     const [videos, setVideos] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedFolder, setSelectedFolder] = useState('');
+    const [finished, setFinished] = useState(false);
+
+
+    const PassFileToBackend = () =>{
+        try {
+            console.log("finish");
+            setFinished(true);
+        }
+        catch (e) {
+            console.log(e);
+        }
+
+    }
 
     const handleFolderSelect = async () => {
         try {
-            console.log("hi");
             const directory = await window.go.main.App.SelectDirectory()
             if (!directory) return;
 
@@ -62,20 +75,29 @@ const VideoShare = () => {
             setSelectedFolder(directory);
 
             try {
-                // Here you'll need to get the list of files from the directory
-                // You might want to add a backend method to scan the directory for videos
-                // For now, let's assume we're getting the files through a backend call
-
                 const files = await window.go.main.App.GetVideosFromDirectory(directory);
-                const discoveredVideos = files.map(file => ({
-                    name: file.name,
-                    size: file.size,
-                    path: file.path,
-                    thumbnail: "/api/placeholder/160/90"
+
+                const discoveredVideos = await Promise.all(files.map(async file => {
+                    const videoUrl = `file://${file.path}`;
+                    let thumbnail;
+                    try {
+                        thumbnail = await generateThumbnail(videoUrl);
+                    } catch (err) {
+                        console.error('Error generating thumbnail:', err);
+                        thumbnail = '/api/placeholder/160/90';
+                    }
+
+                    return {
+                        name: file.name,
+                        size: file.size,
+                        path: file.path,
+                        thumbnail: thumbnail
+                    };
                 }));
 
                 setVideos(discoveredVideos);
-            } catch (error) {
+            }
+            catch (error) {
                 console.error('Error scanning directory:', error);
             } finally {
                 setIsLoading(false);
@@ -151,12 +173,15 @@ const VideoShare = () => {
                                 <h2 className="text-3xl font-bold text-white mb-2">Available Videos</h2>
                                 <p className="text-gray-400">From: {selectedFolder}</p>
                             </div>
-                            <button
-                                onClick={handleFolderSelect}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-                            >
-                                <span onClick={()=>{setVideos([])}}>Clear selection</span>
-                            </button>
+                            <div className="flex space-x-3 ">
+                                <button
+                                    onClick={handleFolderSelect}
+                                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+                                >
+                                    <span onClick={()=>{setVideos([])}}>Clear selection</span>
+                                </button>
+                                <GradientButton text={"Submit"} onClick={PassFileToBackend} />
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
