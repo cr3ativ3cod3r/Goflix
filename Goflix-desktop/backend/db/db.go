@@ -39,6 +39,7 @@ func Connect() {
 		id INTEGER PRIMARY KEY,
 		title TEXT NOT NULL,
 		path TEXT NOT NULL,
+		bgpath TEXT,
 		overview TEXT,
 		releasedate TEXT
 	);`)
@@ -104,6 +105,12 @@ func AddMovieDetails(movie string, path string) {
 		if err != nil {
 			log.Println("Error inserting crew:", err)
 		}
+	}
+
+	bg := GetMovieBg(id)
+	_, err1 = db.Exec("UPDATE movies SET bgpath = ? WHERE id = ?", bg.BackdropPath, id)
+	if err1 != nil {
+		fmt.Println("Adding bgpath to db failed")
 	}
 
 }
@@ -211,6 +218,7 @@ type MovieResponse struct {
 	Title       string `json:"title"`
 	Overview    string `json:"overview"`
 	ReleaseDate string `json:"release_date"`
+	Bgpath      string `json:"bg_path"`
 	Cast        []struct {
 		Name      string `json:"name"`
 		Character string `json:"character"`
@@ -241,11 +249,15 @@ func GetMovieInfo(movieName string) (string, error) {
 		return "", fmt.Errorf("movie credits not found: %v", err)
 	}
 
+	// Fetch bgpath
+	bg := GetMovieBg(id)
+
 	// Create response struct
 	response := MovieResponse{
 		Title:       details.Title,
 		Overview:    details.Overview,
 		ReleaseDate: details.ReleaseDate,
+		Bgpath:      bg.BackdropPath,
 		Cast:        credits.Cast,
 		Crew:        credits.Crew,
 	}
@@ -257,4 +269,31 @@ func GetMovieInfo(movieName string) (string, error) {
 	}
 
 	return string(jsonResponse), nil
+}
+
+type BgResponse struct {
+	BackdropPath string `json:"backdrop_path"`
+}
+
+func GetMovieBg(MovieID int) BgResponse {
+	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d?api_key=%s", MovieID, apikey)
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Println("Fetching backdrop failed")
+	}
+	defer resp.Body.Close()
+
+	var bgdata BgResponse
+	err = json.NewDecoder(resp.Body).Decode(&bgdata)
+	if err != nil {
+		fmt.Println("Failed to decode JSON:", err)
+		return bgdata
+	}
+
+	if bgdata.BackdropPath == "" {
+		fmt.Println("No backdrop path found for movie ID:", MovieID)
+		return bgdata
+	}
+	return bgdata
+
 }
