@@ -80,7 +80,7 @@ func GetVdeoPath(videoId int) string {
 	var path string
 	err = db.QueryRow("SELECT path FROM movies WHERE id = ?", videoId).Scan(&path)
 	if err != nil {
-			log.Fatal("Error getting video path:", err)
+		log.Fatal("Error getting video path:", err)
 	}
 
 	return path
@@ -312,4 +312,25 @@ func GetMovieBg(MovieID int) BgResponse {
 	}
 	return bgdata
 
+}
+
+func GetAllMovies() []string {
+	rows, err := db.Query(`SELECT title FROM movies`)
+	if err != nil {
+		fmt.Println("Movie fetching failed:", err)
+		return nil
+	}
+	defer rows.Close()
+
+	var movies []string
+	for rows.Next() {
+		var title string
+		if err := rows.Scan(&title); err != nil {
+			fmt.Println("Error scanning row:", err)
+			continue
+		}
+		movies = append(movies, title)
+	}
+
+	return movies
 }

@@ -3,6 +3,7 @@ package server
 import (
 	//"database/sql"
 	"Goflix-Desktop/backend/chats"
+	clienthome "Goflix-Desktop/backend/client-home"
 	"Goflix-Desktop/backend/db"
 	"Goflix-Desktop/backend/handlers"
 	"Goflix-Desktop/backend/stream"
@@ -33,7 +34,10 @@ func CreateServer() {
 	//r.HandleFunc("/home",Home)
 
 	fmt.Println("Server is running on http://localhost:8080")
+
 	http.HandleFunc("/{host}/chat", chatHandler)
+	http.HandleFunc("/home", HomeHandler) //this is for client homepage
+
 	log.Fatal(http.ListenAndServe(":8080", r))
 
 }
@@ -51,7 +55,7 @@ func HostHome(w http.ResponseWriter, r *http.Request) {
 
 	// Iterate over the list and call AddMovieDetails
 	for _, item := range data.Items {
-		db.AddMovieDetails(item.Name, item.Path) // Assuming AddMovieDetails takes two arguments
+		db.AddMovieDetails(item.Name, item.Path)
 	}
 
 	// Fetch movie details
@@ -97,6 +101,13 @@ func streamHandler(w http.ResponseWriter, r *http.Request) {
 		return handlers.HandleVideoStream(c, videoPath)
 	})
 
-
 }
 
+func HomeHandler(w http.ResponseWriter, r *http.Request) {
+	resp := clienthome.ClientHome()
+	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	}
+}
