@@ -44,7 +44,7 @@ Goflix is a self-hosted media streaming platform built using Golang, designed to
 1. Clone the repository:
    ```sh
    git clone https://github.com/cr3ativ3cod3r/Goflix.git
-   cd goflix
+   cd Goflix-desktop
    ```
 2. Install dependencies:
    ```sh
