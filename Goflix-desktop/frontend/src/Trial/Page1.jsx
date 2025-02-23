@@ -9,7 +9,7 @@ function Page1() {
   };
 
   return (
-    <div className="container max-w-screen-xl mx-auto h-screen flex flex-col justify-center items-center text-white px-6 relative">
+    <div className="container max-w-screen-xl mx-auto min-h-screen flex flex-col justify-center items-center text-white px-6 relative">
       {/* Movie Title */}
       <h1
         className="text-9xl font-bold"

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 const MovieDetails = () => {
   const movies = [
@@ -60,6 +59,19 @@ const MovieDetails = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const ArrowLeftSVG = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M15 19L8 12L15 5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+  
+  const ArrowRightSVG = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9 5L16 12L9 19" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+  
+
   
   const handleThumbnailClick = (index) => {
     setCurrentIndex(index);
@@ -103,7 +115,7 @@ const MovieDetails = () => {
       <div className="min-h-screen bg-gradient-to-b from-black/50 to-black/90">
         <header className="p-6 flex justify-between items-center">
           <button className="text-white bg-white/20 p-2 rounded-full hover:bg-white/30 transition">
-            <ArrowLeft size={24} />
+            <ArrowLeftSVG size={24} />
           </button>
           <div className="flex items-center gap-4">
             <img 
@@ -161,7 +173,7 @@ const MovieDetails = () => {
                 className="absolute left-10 z-10 bg-black/50 p-2 rounded-full text-white hover:bg-black/70 transition" 
                 onClick={scrollLeft}
               >
-                <ArrowLeft size={24} />
+                <ArrowLeftSVG size={24} />
               </button>
             )}
 
@@ -195,7 +207,7 @@ const MovieDetails = () => {
                 className="absolute right-10 z-10 bg-black/50 p-2 rounded-full text-white hover:bg-black/70 transition" 
                 onClick={scrollRight}
               >
-                <ArrowRight size={24} />
+                <ArrowRightSVG size={24} />
               </button>
             )}
           </div>
