@@ -69,7 +69,7 @@ func Connect() {
 	}
 }
 
-func GetVdeoPath(videoId int64) string {
+func GetVdeoPath(videoId int) string {
 	var err error
 	db, err = sql.Open("sqlite", "./Goflixdb.db")
 	if err != nil {

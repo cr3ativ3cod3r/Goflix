@@ -12,7 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func handleVideoStream(ctx *fiber.Ctx,videoPath string) error {
+func HandleVideoStream(ctx *fiber.Ctx,videoPath string) error {
 
         videoFile, err := os.Open(videoPath)
         if err != nil {
