@@ -37,14 +37,30 @@ func Connect() {
 	// Execute each table creation separately
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS movies (
 		id INTEGER PRIMARY KEY,
-		title TEXT NOT NULL,
-		path TEXT NOT NULL,
-		bgpath TEXT,
-		overview TEXT,
-		releasedate TEXT
+        title TEXT NOT NULL,
+        path TEXT NOT NULL,
+        bgpath TEXT,
+        overview TEXT,
+        releasedate TEXT,
+        genres TEXT,
+        runtime INTEGER,
+        rating REAL,
+        country TEXT
 	);`)
 	if err != nil {
 		log.Fatal("Error creating movies table:", err)
+	}
+
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        movie_id INTEGER NOT NULL,
+        author TEXT NOT NULL,
+        content TEXT NOT NULL,
+        rating REAL,
+        FOREIGN KEY (movie_id) REFERENCES movies(id)
+    );`)
+	if err != nil {
+		log.Fatal("Error creating reviews table:", err)
 	}
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS cast (
@@ -95,16 +111,65 @@ func AddMovieDetails(movie string, path string) {
 	if err1 != nil {
 		fmt.Print("Details not found")
 	}
+
+	genresJSON, err := json.Marshal(details.Genres)
+	if err != nil {
+		log.Println("Error marshaling genres:", err)
+		return
+	}
+
+	insertDetailsSQL := `
+        INSERT OR IGNORE INTO movies 
+        (id, title, path, overview, releasedate, genres, runtime, rating, country) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+	_, err = db.Exec(insertDetailsSQL,
+		id,
+		details.Title,
+		path,
+		details.Overview,
+		details.ReleaseDate,
+		string(genresJSON),
+		details.Runtime,
+		details.Rating,
+		details.Country,
+	)
+	if err != nil {
+		log.Println("Error inserting details:", err)
+		return
+	}
+
+	reviews, err := getMovieReviews(id)
+	if err != nil {
+		log.Println("Error fetching reviews:", err)
+	} else {
+		insertReviewSQL := `
+            INSERT INTO reviews (movie_id, author, content, rating) 
+            VALUES (?, ?, ?, ?)`
+
+		for _, review := range reviews {
+			_, err := db.Exec(insertReviewSQL,
+				id,
+				review.Author,
+				review.Content,
+				review.Rating,
+			)
+			if err != nil {
+				log.Println("Error inserting review:", err)
+			}
+		}
+	}
+
 	credits, err2 := getMovieCredits(id)
 	if err2 != nil {
 		fmt.Print("Credits not found")
 	}
 
-	insertDetailsSQL := `INSERT OR IGNORE INTO movies (id, title, path, overview, releasedate) VALUES (?, ?, ?, ?, ?)`
-	_, err3 := db.Exec(insertDetailsSQL, id, details.Title, path, details.Overview, details.ReleaseDate)
-	if err3 != nil {
-		log.Println("Error inserting detaails:", err3)
-	}
+	// insertDetailsSQL := `INSERT OR IGNORE INTO movies (id, title, path, overview, releasedate) VALUES (?, ?, ?, ?, ?)`
+	// _, err3 := db.Exec(insertDetailsSQL, id, details.Title, path, details.Overview, details.ReleaseDate)
+	// if err3 != nil {
+	// 	log.Println("Error inserting detaails:", err3)
+	// }
 
 	insertCastSQL := `INSERT INTO cast (movie_id, name, character) VALUES (?, ?, ?)`
 	for _, cast := range credits.Cast {
@@ -162,9 +227,18 @@ func getMovieID(movieName string) (int, error) {
 
 // code to fetch details
 type MovieDetails struct {
-	Title       string `json:"title"`
-	Overview    string `json:"overview"`
-	ReleaseDate string `json:"release_date"`
+	Title       string  `json:"title"`
+	Overview    string  `json:"overview"`
+	ReleaseDate string  `json:"release_date"`
+	Genres      []Genre `json:"genres"`
+	Runtime     int     `json:"runtime"`
+	Rating      float64 `json:"vote_average"`
+	Country     string  `json:"production_countries,omitempty"`
+}
+
+type Genre struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 func getMovieDetails(movieID int) (MovieDetails, error) {
@@ -231,10 +305,14 @@ func CreateChat() {
 }
 
 type MovieResponse struct {
-	Title       string `json:"title"`
-	Overview    string `json:"overview"`
-	ReleaseDate string `json:"release_date"`
-	Bgpath      string `json:"bg_path"`
+	Title       string   `json:"title"`
+	Overview    string   `json:"overview"`
+	ReleaseDate string   `json:"release_date"`
+	Bgpath      string   `json:"bg_path"`
+	Genres      []string `json:"genres"`
+	Runtime     int      `json:"runtime"`
+	Rating      float64  `json:"rating"`
+	Country     string   `json:"country"`
 	Cast        []struct {
 		Name      string `json:"name"`
 		Character string `json:"character"`
@@ -243,6 +321,32 @@ type MovieResponse struct {
 		Name string `json:"name"`
 		Job  string `json:"job"`
 	} `json:"crew"`
+	Reviews []Review `json:"reviews"`
+}
+
+type Review struct {
+	Author  string  `json:"author"`
+	Content string  `json:"content"`
+	Rating  float64 `json:"rating"`
+}
+
+func getMovieReviews(movieID int) ([]Review, error) {
+	apiURL := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d/reviews?api_key=%s", movieID, apikey)
+
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var response struct {
+		Results []Review `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, err
+	}
+
+	return response.Results, nil
 }
 
 // Function to get all movie details as JSON
@@ -265,8 +369,18 @@ func GetMovieInfo(movieName string) (string, error) {
 		return "", fmt.Errorf("movie credits not found: %v", err)
 	}
 
+	reviews, err := getMovieReviews(id)
+	if err != nil {
+		log.Println("Error fetching reviews:", err)
+	}
+
 	// Fetch bgpath
 	bg := GetMovieBg(id)
+
+	genreNames := make([]string, len(details.Genres))
+	for i, genre := range details.Genres {
+		genreNames[i] = genre.Name
+	}
 
 	// Create response struct
 	response := MovieResponse{
@@ -274,8 +388,13 @@ func GetMovieInfo(movieName string) (string, error) {
 		Overview:    details.Overview,
 		ReleaseDate: details.ReleaseDate,
 		Bgpath:      bg.BackdropPath,
+		Genres:      genreNames,
+		Runtime:     details.Runtime,
+		Rating:      details.Rating,
+		Country:     details.Country,
 		Cast:        credits.Cast,
 		Crew:        credits.Crew,
+		Reviews:     reviews,
 	}
 
 	// Convert to JSON
