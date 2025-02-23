@@ -53,17 +53,15 @@ type VideoFile struct {
 
 func HostHome(items []VideoFile) ([]string, error) {
 	var responses []string
-	// Store movie details in the database
 	for _, item := range items {
 		db.AddMovieDetails(item.Name, item.Path)
 	}
 
-	// Retrieve movie information
 	for _, item := range items {
 		movieInfo, err := db.GetMovieInfo(item.Name)
 		if err != nil {
 			log.Println("Error fetching movie info:", err)
-			continue // Skip this movie if there's an error
+			continue
 		}
 		responses = append(responses, movieInfo)
 	}
