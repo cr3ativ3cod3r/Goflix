@@ -4,12 +4,14 @@ import (
 	"Goflix-Desktop/backend/server"
 	"context"
 	"fmt"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"log"
+	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
-	"log"
-	"os/exec"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type Video struct {
@@ -112,4 +114,25 @@ func (a *App) AddDataHost(videos []Video) ([]string, error) {
 	}
 
 	return responses, nil
+}
+
+type StreamResponse struct {
+    StatusCode int    `json:"statusCode"`
+    URL        string `json:"url"`
+    Message    string `json:"message"`
+}
+
+func (a *App) ClientStreamHandler(ip string, videoId string) (StreamResponse, error) {
+    url := "http://" + ip + "/" + videoId + "/initStream"
+    resp, err := http.Get(url)
+    if err != nil {
+        return StreamResponse{}, err
+    }
+    defer resp.Body.Close()
+
+    return StreamResponse{
+        StatusCode: resp.StatusCode,
+        URL:        url,
+        Message:    "Stream request sent successfully",
+    }, nil
 }

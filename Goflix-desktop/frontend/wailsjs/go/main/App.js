@@ -6,6 +6,10 @@ export function AddDataHost(arg1) {
   return window['go']['main']['App']['AddDataHost'](arg1);
 }
 
+export function ClientStreamHandler(arg1, arg2) {
+  return window['go']['main']['App']['ClientStreamHandler'](arg1, arg2);
+}
+
 export function GetVideosFromDirectory(arg1) {
   return window['go']['main']['App']['GetVideosFromDirectory'](arg1);
 }
