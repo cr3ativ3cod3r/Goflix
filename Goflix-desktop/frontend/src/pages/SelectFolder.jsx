@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {GradientButton} from "../Component/GradientButton.jsx";
 // SVG Icon Components
 const FolderIcon = () => (
@@ -46,8 +46,7 @@ const DatabaseIcon = () => (
         <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
     </svg>
 );
-
-const VideoShare = ( {onComplete, MovieData} ) => {
+const VideoShare = ({  MovieData }) => {
     const [videos, setVideos] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedFolder, setSelectedFolder] = useState('');
@@ -55,28 +54,38 @@ const VideoShare = ( {onComplete, MovieData} ) => {
     const [movieList, setMovieList] = useState([]);
 
 
+
     const PassFileToBackend = async () => {
         try {
             console.log("Sending videos to backend:", videos);
             const response = await window.go.main.App.AddDataHost(videos);
-
-            // Ensure response is an array or extract array from response object
             const newMovies = Array.isArray(response) ? response : Object.values(response);
 
-            setMovieList((prevMovies) => [...prevMovies, ...newMovies]); // Append new movies to existing list
+            // Parse the response data before setting state
+            const parsedMovies = newMovies.map(movie => {
+                if (typeof movie === 'string') {
+                    try {
+                        return JSON.parse(movie);
+                    } catch (e) {
+                        return movie;
+                    }
+                }
+                return movie;
+            });
 
-            alert(response);
-            MovieData(response);
+            setMovieList(prevMovies => {
+                const updatedMovies = [...prevMovies, ...parsedMovies];
+                console.log("Updated movies in setter:", updatedMovies);
+                return updatedMovies;
+            });
+
+            MovieData(parsedMovies); // Pass parsed data to MovieData prop
             setFinished(true);
-            onComplete(true);
         } catch (error) {
             console.error("Error processing files:", error);
             setFinished(false);
         }
     };
-
-
-
 
 
     const handleFolderSelect = async () => {
