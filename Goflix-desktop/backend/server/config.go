@@ -4,11 +4,15 @@ import (
 	//"database/sql"
 	"Goflix-Desktop/backend/chats"
 	"Goflix-Desktop/backend/db"
+	"Goflix-Desktop/backend/handlers"
+	"Goflix-Desktop/backend/stream"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/gorilla/mux"
 	//"github.com/gorilla/mux"
 	//"modernc.org/sqlite"
@@ -77,3 +81,22 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 
 	chats.WsHandler(w, r, host)
 }
+
+func streamHandler(w http.ResponseWriter, r *http.Request) {
+	// Get the video path
+	vars := mux.Vars(r)
+	videoIdStr := vars["videoId"]
+	videoId, err := strconv.Atoi(videoIdStr)
+	if err != nil {
+		http.Error(w, "Invalid video ID", http.StatusBadRequest)
+		return
+	}
+
+	stream.GetStreamApp().Get("/stream/{videoId}", func(c *fiber.Ctx) error {
+		videoPath := db.GetVdeoPath(videoId)
+		return handlers.HandleVideoStream(c, videoPath)
+	})
+
+
+}
+
