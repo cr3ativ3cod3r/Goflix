@@ -141,6 +141,15 @@ func streamHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func ClientStreamHandler(ip string, videoId string) (*http.Response, error) {
+	url := "http://" + ip + "/" + videoId + "/initStream"
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 func ClientHome(w http.ResponseWriter, r *http.Request) {
 	resp := clienthome.ClientHome()
 	w.Header().Set("Content-Type", "application/json")
