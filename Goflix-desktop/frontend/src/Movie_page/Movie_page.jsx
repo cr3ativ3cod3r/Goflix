@@ -1,10 +1,17 @@
 import React, { useState } from "react";
 import ScrollElement from "./scroll_element.jsx";
 import MovieCarousel from "./Movie_carousel.jsx"; 
-import { ChevronDown } from "lucide-react";
 
 const MoviePage = () => {
  const [selectedSection, setSelectedSection] = useState("Cast");
+
+
+ const ChevronDownSVG = () => (
+   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+     <path d="M6 9L12 15L18 9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+   </svg>
+ );
+ 
 
  return (
    <div className="min-h-screen bg-gradient-to-b from-blue-900 to-black text-white">
@@ -75,7 +82,7 @@ const MoviePage = () => {
                <option value="Cast">Cast</option>
                <option value="Crew">Crew</option>
              </select>
-             <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" size={24} />
+             <ChevronDownSVG className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" size={24} />
            </div>
          </div>
          <ScrollElement />
