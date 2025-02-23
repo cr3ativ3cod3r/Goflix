@@ -2,6 +2,7 @@ package server
 
 import (
 	"Goflix-Desktop/backend/chats"
+	"Goflix-Desktop/backend/clienthome"
 	"Goflix-Desktop/backend/db"
 	"Goflix-Desktop/backend/handlers"
 	"Goflix-Desktop/backend/stream"
@@ -74,10 +75,6 @@ func HostHome(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ClientHome(w http.ResponseWriter, r *http.Request) {
-	// Implement client home logic here
-}
-
 func handleChat(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	host := vars["host"]
@@ -97,4 +94,13 @@ func streamHandler(w http.ResponseWriter, r *http.Request) {
 		videoPath := db.GetVdeoPath(videoId)
 		return handlers.HandleVideoStream(c, videoPath)
 	})
+}
+
+func ClientHome(w http.ResponseWriter, r *http.Request) {
+	resp := clienthome.ClientHome()
+	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	}
 }
