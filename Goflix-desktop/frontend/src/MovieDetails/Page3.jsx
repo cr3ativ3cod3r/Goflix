@@ -1,5 +1,5 @@
 import { useState } from "react";
-import ScrollElement from "../Movie_page/scroll_element.jsx"; 
+import ScrollElement from "./scroll_element.jsx";
 
 function ChevronDown({ size = 22, className = "" }) {
     return (
