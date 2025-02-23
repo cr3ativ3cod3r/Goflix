@@ -1,6 +1,6 @@
 function Page2(props) {
     return (
-        <div className="container max-w-screen-xl mx-auto h-screen flex flex-col md:flex-row items-center justify-start text-white px-4">
+        <div className="container max-w-screen-xl mx-auto min-h-screen flex flex-col md:flex-row items-center justify-start text-white px-4">
             {/* Movie Poster (Left Side) */}
             <div className="md:mr-12 w-80 flex-shrink-0">
                 <img
