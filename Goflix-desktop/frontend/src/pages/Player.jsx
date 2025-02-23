@@ -68,7 +68,7 @@ const VideoStreaming = () => {
     const [showChat, setShowChat] = useState(false);
     const [volume, setVolume] = useState(1);
 
-    const STREAM_URL = "http://0.0.0.0:8081/stream/1";
+    const STREAM_URL = "http://localhost:8081/stream/157336";
 
     useEffect(() => {
         const video = videoRef.current;

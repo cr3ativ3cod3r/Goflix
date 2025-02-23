@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { SplashScreen } from "./pages/SplashScreen.jsx";
-import VideoShare from "./pages/SelectFolder.jsx";
-import Player from "./pages/Player.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import MovieDetails from "./pages/MovieDetails.jsx";
+import Player from "./pages/Player.jsx";
+import VideoShare from "./pages/SelectFolder.jsx";
 import ServerSelection from "./pages/ServerSelection.jsx";
+import { SplashScreen } from "./pages/SplashScreen.jsx";
 
 function App() {
     const [currentPage, setCurrentPage] = useState("splash");
@@ -12,6 +12,12 @@ function App() {
     const [mode, setMode] = useState("");
     const [movieData, setMovieData] = useState({});
     const [currentMovie, setCurrentMovie] = useState({});
+
+    // Function to start playing
+    const startPlaying = (videoUrl) => {
+        setVideoPath(videoUrl);
+        setCurrentPage("player");
+    };
 
     const renderPage = () => {
         switch (currentPage) {
@@ -22,24 +28,19 @@ function App() {
                         if (selectedMode === "host") {
                             setCurrentPage("select");
                         } else {
-                            // Handle client mode in the future
-                            // For now, you could show a message or placeholder
                             console.log("Client mode selected - functionality coming soon");
                             setCurrentPage("select");
                         }
                     }}
                 />;
             case "select":
-                return (
-                    mode === "host" ? (
-                        <VideoShare
-                            onComplete={() => setCurrentPage("home")}
-                            MovieData={setMovieData}
-                        />
-
-                    ) : (
-                        <ServerSelection/>
-                    )
+                return mode === "host" ? (
+                    <VideoShare
+                        onComplete={() => setCurrentPage("home")}
+                        MovieData={setMovieData}
+                    />
+                ) : (
+                    <ServerSelection />
                 );
             case "player":
                 return (
@@ -55,12 +56,13 @@ function App() {
                         setCurrentPage("movie");
                     }} data={movieData} />
                 );
-
             case "movie":
                 return (
-                    <MovieDetails movie={currentMovie} />
+                    <MovieDetails
+                        movie={currentMovie}
+                        onStartPlaying={startPlaying} // Pass function to MovieDetails
+                    />
                 );
-
             default:
                 return <SplashScreen onComplete={(selectedMode) => {
                     setMode(selectedMode);

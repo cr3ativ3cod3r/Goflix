@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function AddDataHost(arg1:Array<main.Video>):Promise<Array<string>>;
 
+export function ClientStreamHandler(arg1:string,arg2:string):Promise<main.StreamResponse>;
+
 export function GetVideosFromDirectory(arg1:string):Promise<Array<Record<string, any>>>;
 
 export function SelectDirectory():Promise<string>;

@@ -4,7 +4,7 @@ import Page2 from "../MovieDetails/Page2.jsx";
 import Page3 from "../MovieDetails/Page3.jsx";
 import backgroundImage from "../assets/images/interstellar.png";
 
-function MovieDetails({ movie }) {
+function MovieDetails({ movie, onStartPlaying }) {
     const containerRef = useRef(null);
 
     useEffect(() => {
@@ -55,7 +55,9 @@ function MovieDetails({ movie }) {
             }}
         >
             <div className="page" style={{ scrollSnapAlign: "start" }}><Page1 /></div>
-            <div className="page" style={{ scrollSnapAlign: "start" }}><Page2 /></div>
+            <div className="page" style={{ scrollSnapAlign: "start" }}>
+                <Page2 onStartPlaying={onStartPlaying} />
+            </div>
             <div className="page" style={{ scrollSnapAlign: "start" }}><Page3 /></div>
         </div>
     );
