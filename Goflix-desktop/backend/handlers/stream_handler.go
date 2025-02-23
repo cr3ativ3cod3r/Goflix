@@ -1,15 +1,15 @@
 package handlers
 
 import (
-        "fmt"
-        "io"
-        "log"
-        "mime"
-        "os"
-        "path/filepath"
-        "strconv"
-        "strings"
-        "github.com/gofiber/fiber/v2"
+	"fmt"
+	"io"
+	"log"
+	"mime"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"github.com/gofiber/fiber/v2"
 )
 
 func handleVideoStream(ctx *fiber.Ctx,videoPath string) error {

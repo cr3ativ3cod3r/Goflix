@@ -69,6 +69,22 @@ func Connect() {
 	}
 }
 
+func GetVdeoPath(videoId int64) string {
+	var err error
+	db, err = sql.Open("sqlite", "./Goflixdb.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var path string
+	err = db.QueryRow("SELECT path FROM movies WHERE id = ?", videoId).Scan(&path)
+	if err != nil {
+			log.Fatal("Error getting video path:", err)
+	}
+
+	return path
+}
+
 func AddMovieDetails(movie string, path string) {
 	id, err := getMovieID(movie)
 	if err != nil {
