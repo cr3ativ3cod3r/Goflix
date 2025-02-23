@@ -2,7 +2,6 @@ package main
 
 import (
 	"embed"
-
 	"Goflix-Desktop/backend/stream"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -26,10 +25,13 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
+		OnShutdown: app.OnShutdown,
 		Bind: []interface{}{
 			app,
 		},
 	})
+
+	
 
 	if err != nil {
 		println("Error:", err.Error())

@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"log"
+	"os/exec"
 )
 
 type Video struct {
@@ -18,6 +20,17 @@ type Video struct {
 
 type App struct {
 	ctx context.Context
+}
+
+func (a *App) OnShutdown(ctx context.Context) {
+	log.Println("Application is shutting down. Cleaning up resources...")
+	cmd := exec.Command("pkill", "stream-helper",)
+	cmd.Stdout = log.Writer()
+	cmd.Stderr = log.Writer()
+	
+	if err := cmd.Start(); err != nil {
+		log.Fatalf("Failed to stop stream-helper: %v", err)
+	}
 }
 
 // NewApp creates a new App application struct
