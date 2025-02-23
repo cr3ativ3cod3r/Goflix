@@ -9,3 +9,7 @@ export function GetVideosFromDirectory(arg1) {
 export function SelectDirectory() {
   return window['go']['main']['App']['SelectDirectory']();
 }
+
+export function StartBackend() {
+  return window['go']['main']['App']['StartBackend']();
+}

@@ -7,7 +7,7 @@ import Player from "./pages/Player.jsx";
 function App() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-900 to-black text-white flex items-center justify-center">
-      <Player/>
+      <SplashScreen/>
     </div>
   );
 }

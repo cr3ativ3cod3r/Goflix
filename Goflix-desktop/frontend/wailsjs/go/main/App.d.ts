@@ -4,3 +4,5 @@
 export function GetVideosFromDirectory(arg1:string):Promise<Array<Record<string, any>>>;
 
 export function SelectDirectory():Promise<string>;
+
+export function StartBackend():Promise<void>;
