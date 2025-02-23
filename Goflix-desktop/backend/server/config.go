@@ -104,3 +104,11 @@ func ClientHome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 	}
 }
+
+func ClientHomeHelper(ip string) any {
+	resp, err := http.Get("http://" + ip + "/client/home")
+	if err != nil {
+		return "Request failed"
+	}
+	return resp
+}
