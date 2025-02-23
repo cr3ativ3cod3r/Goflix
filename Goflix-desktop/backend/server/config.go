@@ -36,7 +36,7 @@ func CreateServer() {
 	r := mux.NewRouter()
 
 	// Register routes
-	r.HandleFunc("/host/home", HostHome)
+	//r.HandleFunc("/host/home", HostHome)
 	r.HandleFunc("/client/home", ClientHome)
 	r.HandleFunc("/{host}/chat", handleChat)
 	r.HandleFunc("/stream/{videoId}", streamHandler)
@@ -45,34 +45,30 @@ func CreateServer() {
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
 
-func HostHome(w http.ResponseWriter, r *http.Request) {
-	var data RequestData
+type VideoFile struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+	Size string `json:"size"`
+}
+
+func HostHome(items []VideoFile) ([]string, error) {
 	var responses []string
-
-	err := json.NewDecoder(r.Body).Decode(&data)
-	if err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-
-	for _, item := range data.Items {
+	// Store movie details in the database
+	for _, item := range items {
 		db.AddMovieDetails(item.Name, item.Path)
 	}
 
-	for _, item := range data.Items {
+	// Retrieve movie information
+	for _, item := range items {
 		movieInfo, err := db.GetMovieInfo(item.Name)
 		if err != nil {
 			log.Println("Error fetching movie info:", err)
-			continue
+			continue // Skip this movie if there's an error
 		}
 		responses = append(responses, movieInfo)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(responses)
-	if err != nil {
-		http.Error(w, "Error encoding response", http.StatusInternalServerError)
-	}
+	return responses, nil
 }
 
 func handleChat(w http.ResponseWriter, r *http.Request) {
