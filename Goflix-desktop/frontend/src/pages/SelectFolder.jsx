@@ -48,23 +48,32 @@ const DatabaseIcon = () => (
     </svg>
 );
 
-const VideoShare = ( onComplete ) => {
+const VideoShare = ( onComplete, videoList ) => {
     const [videos, setVideos] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedFolder, setSelectedFolder] = useState('');
     const [finished, setFinished] = useState(false);
+    const [movieList, setMovieList] = useState([]);
 
 
-    const PassFileToBackend = () =>{
+    const PassFileToBackend = async () => {
         try {
-            console.log("finish");
+            console.log("Sending videos to backend:", videos);
+            const response = await window.go.main.App.AddDataHost(videos);
+            setMovieList(response);
+            console.log("Backend processing complete:", response);
             setFinished(true);
+        } catch (error) {
+            console.error("Error processing files:", error);
+            setFinished(false);
         }
-        catch (e) {
-            console.log(e);
+        if(finished){
+            // onComplete(true);
+            // videoList(true);
+            console.log("hi this worked")
         }
 
-    }
+    };
 
     const handleFolderSelect = async () => {
         try {

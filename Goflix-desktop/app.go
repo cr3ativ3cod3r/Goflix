@@ -10,6 +10,12 @@ import (
 	"strings"
 )
 
+type Video struct {
+	Name string `json:"name"`
+	Size string `json:"size"`
+	Path string `json:"path"`
+}
+
 type App struct {
 	ctx context.Context
 }
@@ -74,4 +80,23 @@ func (a *App) StartBackend() error {
 		server.CreateServer()
 	}()
 	return nil
+}
+func (a *App) AddDataHost(videos []Video) ([]string, error) {
+
+	var videoFiles []server.VideoFile
+	for _, video := range videos {
+		nameWithoutExt := strings.TrimSuffix(video.Name, filepath.Ext(video.Name))
+		videoFiles = append(videoFiles, server.VideoFile{
+			Name: nameWithoutExt,
+			Path: video.Path,
+			Size: video.Size,
+		})
+	}
+
+	responses, err := server.HostHome(videoFiles)
+	if err != nil {
+		return nil, fmt.Errorf("error in HostHome: %v", err)
+	}
+
+	return responses, nil
 }
