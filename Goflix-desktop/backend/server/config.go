@@ -37,6 +37,7 @@ func CreateServer() {
 
 	http.HandleFunc("/{host}/chat", chatHandler)
 	http.HandleFunc("/home", HomeHandler) //this is for client homepage
+	http.HandleFunc("/host/home", HostHome)
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 
