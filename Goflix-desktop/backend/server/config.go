@@ -4,12 +4,13 @@ import (
 	"Goflix-Desktop/backend/chats"
 	"Goflix-Desktop/backend/clienthome"
 	"Goflix-Desktop/backend/db"
-	"encoding/json"
 	"bytes"
+	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
 	"os/exec"
+	"strconv"
+
 	"github.com/gorilla/mux"
 )
 
@@ -30,26 +31,23 @@ func CreateServer() {
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("Failed to start stream-helper: %v", err)
 	}
-    
-    db.Connect()
-    
-    // Create a new router
-    r := mux.NewRouter()
-    
-    // Register your specific routes FIRST
-    r.HandleFunc("/{videoId}/initStream", func(w http.ResponseWriter, r *http.Request) {
-        vars := mux.Vars(r)
-        videoId := vars["videoId"]
-        log.Printf("StreamHandler called with videoId: %s", videoId)
-        streamHandler(w, r)
-    })
-    
-    r.HandleFunc("/{host}/chat", func(w http.ResponseWriter, r *http.Request) {
-        vars := mux.Vars(r)
-        host := vars["host"]
-        log.Printf("ChatHandler called with host: %s", host)
-        handleChat(w, r)
-    })
+
+	db.Connect()
+
+	// Create a new router
+	r := mux.NewRouter()
+
+	// Register your specific routes FIRST
+	r.HandleFunc("/{videoId}/initStream", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		videoId := vars["videoId"]
+		log.Printf("StreamHandler called with videoId: %s", videoId)
+		streamHandler(w, r)
+	})
+
+	r.HandleFunc("/{host}/chat", func(w http.ResponseWriter, r *http.Request) {
+		handleChat(w, r)
+	})
 
 	r.HandleFunc("/client/home", ClientHome).Methods("GET")
 
@@ -57,10 +55,8 @@ func CreateServer() {
 	chatServer = chats.NewChatServer()
 	chatServer.Start()
 
-
-
-    log.Println("Server is running on http://localhost:8080")
-    log.Fatal(http.ListenAndServe(":8080", r))
+	log.Println("Server is running on http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
 
 type VideoFile struct {
