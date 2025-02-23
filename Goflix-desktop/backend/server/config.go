@@ -39,9 +39,6 @@ func CreateServer() {
 
 	// Register your specific routes FIRST
 	r.HandleFunc("/{videoId}/initStream", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		videoId := vars["videoId"]
-		log.Printf("StreamHandler called with videoId: %s", videoId)
 		streamHandler(w, r)
 	})
 
