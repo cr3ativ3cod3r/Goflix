@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import {GradientButton} from "../Component/GradientButton.jsx";
-
 // SVG Icon Components
 const FolderIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full">
@@ -48,7 +47,7 @@ const DatabaseIcon = () => (
     </svg>
 );
 
-const VideoShare = ( onComplete, videoList ) => {
+const VideoShare = ( {onComplete, MovieData} ) => {
     const [videos, setVideos] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedFolder, setSelectedFolder] = useState('');
@@ -60,20 +59,25 @@ const VideoShare = ( onComplete, videoList ) => {
         try {
             console.log("Sending videos to backend:", videos);
             const response = await window.go.main.App.AddDataHost(videos);
-            setMovieList(response);
-            console.log("Backend processing complete:", response);
+
+            // Ensure response is an array or extract array from response object
+            const newMovies = Array.isArray(response) ? response : Object.values(response);
+
+            setMovieList((prevMovies) => [...prevMovies, ...newMovies]); // Append new movies to existing list
+
+            alert(response);
+            MovieData(response);
             setFinished(true);
+            onComplete(true);
         } catch (error) {
             console.error("Error processing files:", error);
             setFinished(false);
         }
-        if(finished){
-            // onComplete(true);
-            // videoList(true);
-            console.log("hi this worked")
-        }
-
     };
+
+
+
+
 
     const handleFolderSelect = async () => {
         try {
@@ -88,14 +92,7 @@ const VideoShare = ( onComplete, videoList ) => {
 
                 const discoveredVideos = await Promise.all(files.map(async file => {
                     const videoUrl = `file://${file.path}`;
-                    let thumbnail;
-                    try {
-                        thumbnail = await generateThumbnail(videoUrl);
-                    } catch (err) {
-                        console.error('Error generating thumbnail:', err);
-                        thumbnail = '/api/placeholder/160/90';
-                    }
-
+                    const thumbnail = "";
                     return {
                         name: file.name,
                         size: file.size,

@@ -15,7 +15,7 @@ function Page1() {
         className="text-9xl font-bold"
         style={{ fontFamily: "'Open Sans Condensed', sans-serif" }}
       >
-        INTERSTELLAR
+        INTERSTELLAR1
       </h1>
 
       {/* Movie Details - Always Below Title */}

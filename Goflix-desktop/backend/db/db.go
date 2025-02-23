@@ -4,196 +4,230 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"sync"
 
 	"github.com/joho/godotenv"
 	_ "modernc.org/sqlite"
 )
 
-var db *sql.DB
-var apikey string
+var (
+	db     *sql.DB
+	apikey string
+	mu     sync.Mutex
+)
 
-func Connect() {
+// MovieDetails struct update to handle production countries correctly
+type MovieDetails struct {
+	Title              string  `json:"title"`
+	Overview           string  `json:"overview"`
+	ReleaseDate        string  `json:"release_date"`
+	Genres             []Genre `json:"genres"`
+	Runtime            int     `json:"runtime"`
+	Rating             float64 `json:"vote_average"`
+	ProductionCountries []struct {
+		Name string `json:"name"`
+	} `json:"production_countries"`
+}
+
+type Genre struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+func Connect() error {
 	var err error
 	db, err = sql.Open("sqlite", "./Goflixdb.db")
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to open database: %v", err)
 	}
 
-	enverr := godotenv.Load()
-	if enverr != nil {
-		log.Fatal("Error loading .env file")
+	// Set connection pool limits
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
+	// Load environment variables
+	if err := godotenv.Load(); err != nil {
+		return fmt.Errorf("error loading .env file: %v", err)
 	}
 
 	apikey = os.Getenv("TMDB_API_KEY")
 	if apikey == "" {
-		log.Fatal("API key not found in environment")
+		return fmt.Errorf("API key not found in environment")
 	}
 
-	// Execute each table creation separately
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS movies (
-		id INTEGER PRIMARY KEY,
-        title TEXT NOT NULL,
-        path TEXT NOT NULL,
-        bgpath TEXT,
-        overview TEXT,
-        releasedate TEXT,
-        genres TEXT,
-        runtime INTEGER,
-        rating REAL,
-        country TEXT
-	);`)
-	if err != nil {
-		log.Fatal("Error creating movies table:", err)
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database: %v", err)
 	}
 
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS reviews (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        movie_id INTEGER NOT NULL,
-        author TEXT NOT NULL,
-        content TEXT NOT NULL,
-        rating REAL,
-        FOREIGN KEY (movie_id) REFERENCES movies(id)
-    );`)
-	if err != nil {
-		log.Fatal("Error creating reviews table:", err)
-	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS cast (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		movie_id INTEGER NOT NULL,
-		name TEXT NOT NULL,
-		character TEXT,
-		FOREIGN KEY (movie_id) REFERENCES movies(id)
-	);`)
-	if err != nil {
-		log.Fatal("Error creating cast table:", err)
-	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS crew (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		movie_id INTEGER NOT NULL,
-		name TEXT NOT NULL,
-		job TEXT NOT NULL,
-		FOREIGN KEY (movie_id) REFERENCES movies(id)
-	);`)
-	if err != nil {
-		log.Fatal("Error creating crew table:", err)
-	}
+	return initializeTables()
 }
 
-func GetVideoPath(videoId int) string {
-	var err error
-	db, err = sql.Open("sqlite", "./Goflixdb.db")
-	if err != nil {
-		log.Fatal(err)
+func initializeTables() error {
+	tables := []string{
+		`CREATE TABLE IF NOT EXISTS movies (
+            id INTEGER PRIMARY KEY,
+            title TEXT NOT NULL,
+            path TEXT NOT NULL,
+            bgpath TEXT,
+            overview TEXT,
+            releasedate TEXT,
+            genres TEXT,
+            runtime INTEGER,
+            rating REAL,
+            country TEXT
+        )`,
+		`CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            movie_id INTEGER NOT NULL,
+            author TEXT NOT NULL,
+            content TEXT NOT NULL,
+            rating REAL,
+            FOREIGN KEY (movie_id) REFERENCES movies(id)
+        )`,
+		`CREATE TABLE IF NOT EXISTS cast (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            movie_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            character TEXT,
+            FOREIGN KEY (movie_id) REFERENCES movies(id)
+        )`,
+		`CREATE TABLE IF NOT EXISTS crew (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            movie_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            job TEXT NOT NULL,
+            FOREIGN KEY (movie_id) REFERENCES movies(id)
+        )`,
+		`CREATE TABLE IF NOT EXISTS chats (
+            username TEXT NOT NULL,
+            message TEXT NOT NULL
+        )`
 	}
 
+	for _, table := range tables {
+		if _, err := db.Exec(table); err != nil {
+			return fmt.Errorf("failed to create table: %v", err)
+		}
+	}
+	return nil
+}
+
+func GetVideoPath(videoId int) (string, error) {
 	var path string
-	err = db.QueryRow("SELECT path FROM movies WHERE id = ?", videoId).Scan(&path)
+	err := db.QueryRow("SELECT path FROM movies WHERE id = ?", videoId).Scan(&path)
 	if err != nil {
-		log.Fatal("Error getting video path:", err)
+		return "", fmt.Errorf("error getting video path: %v", err)
 	}
-
-	return path
+	return path, nil
 }
 
-func AddMovieDetails(movie string, path string) {
+func AddMovieDetails(movie, path string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
 	id, err := getMovieID(movie)
 	if err != nil {
-		fmt.Print("Movie not found")
-	}
-	details, err1 := getMovieDetails(id)
-	if err1 != nil {
-		fmt.Print("Details not found")
+		return fmt.Errorf("failed to get movie ID: %v", err)
 	}
 
+	details, err := getMovieDetails(id)
+	if err != nil {
+		return fmt.Errorf("failed to get movie details: %v", err)
+	}
+
+	// Start a transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %v", err)
+	}
+	defer tx.Rollback() // Rollback if we don't commit
+
+	// Insert movie details
 	genresJSON, err := json.Marshal(details.Genres)
 	if err != nil {
-		log.Println("Error marshaling genres:", err)
-		return
+		return fmt.Errorf("failed to marshal genres: %v", err)
 	}
 
-	insertDetailsSQL := `
-        INSERT OR IGNORE INTO movies 
-        (id, title, path, overview, releasedate, genres, runtime, rating, country) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	// Get first country name or empty string
+	country := ""
+	if len(details.ProductionCountries) > 0 {
+		country = details.ProductionCountries[0].Name
+	}
 
-	_, err = db.Exec(insertDetailsSQL,
-		id,
-		details.Title,
-		path,
-		details.Overview,
-		details.ReleaseDate,
-		string(genresJSON),
-		details.Runtime,
-		details.Rating,
-		details.Country,
+	_, err = tx.Exec(`
+        INSERT OR REPLACE INTO movies 
+        (id, title, path, overview, releasedate, genres, runtime, rating, country) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, details.Title, path, details.Overview, details.ReleaseDate,
+		string(genresJSON), details.Runtime, details.Rating, country,
 	)
 	if err != nil {
-		log.Println("Error inserting details:", err)
-		return
+		return fmt.Errorf("failed to insert movie details: %v", err)
 	}
 
+	// Insert reviews
 	reviews, err := getMovieReviews(id)
 	if err != nil {
-		log.Println("Error fetching reviews:", err)
+		log.Printf("Warning: failed to get reviews: %v", err)
 	} else {
-		insertReviewSQL := `
-            INSERT INTO reviews (movie_id, author, content, rating) 
-            VALUES (?, ?, ?, ?)`
-
 		for _, review := range reviews {
-			_, err := db.Exec(insertReviewSQL,
-				id,
-				review.Author,
-				review.Content,
-				review.Rating,
+			_, err = tx.Exec(`
+                INSERT INTO reviews (movie_id, author, content, rating)
+                VALUES (?, ?, ?, ?)`,
+				id, review.Author, review.Content, review.Rating,
 			)
 			if err != nil {
-				log.Println("Error inserting review:", err)
+				log.Printf("Warning: failed to insert review: %v", err)
 			}
 		}
 	}
 
-	credits, err2 := getMovieCredits(id)
-	if err2 != nil {
-		fmt.Print("Credits not found")
-	}
+	// Insert credits
+	credits, err := getMovieCredits(id)
+	if err != nil {
+		log.Printf("Warning: failed to get credits: %v", err)
+	} else {
+		for _, cast := range credits.Cast {
+			_, err = tx.Exec(
+				`INSERT INTO cast (movie_id, name, character) VALUES (?, ?, ?)`,
+				id, cast.Name, cast.Character,
+			)
+			if err != nil {
+				log.Printf("Warning: failed to insert cast member: %v", err)
+			}
+		}
 
-	// insertDetailsSQL := `INSERT OR IGNORE INTO movies (id, title, path, overview, releasedate) VALUES (?, ?, ?, ?, ?)`
-	// _, err3 := db.Exec(insertDetailsSQL, id, details.Title, path, details.Overview, details.ReleaseDate)
-	// if err3 != nil {
-	// 	log.Println("Error inserting detaails:", err3)
-	// }
-
-	insertCastSQL := `INSERT INTO cast (movie_id, name, character) VALUES (?, ?, ?)`
-	for _, cast := range credits.Cast {
-		_, err := db.Exec(insertCastSQL, id, cast.Name, cast.Character)
-		if err != nil {
-			log.Println("Error inserting cast:", err)
+		for _, crew := range credits.Crew {
+			_, err = tx.Exec(
+				`INSERT INTO crew (movie_id, name, job) VALUES (?, ?, ?)`,
+				id, crew.Name, crew.Job,
+			)
+			if err != nil {
+				log.Printf("Warning: failed to insert crew member: %v", err)
+			}
 		}
 	}
 
-	// Insert into Crew table
-	insertCrewSQL := `INSERT INTO crew (movie_id, name, job) VALUES (?, ?, ?)`
-	for _, crew := range credits.Crew {
-		_, err := db.Exec(insertCrewSQL, id, crew.Name, crew.Job)
-		if err != nil {
-			log.Println("Error inserting crew:", err)
-		}
-	}
-
+	// Update background path
 	bg := GetMovieBg(id)
-	_, err1 = db.Exec("UPDATE movies SET bgpath = ? WHERE id = ?", bg.BackdropPath, id)
-	if err1 != nil {
-		fmt.Println("Adding bgpath to db failed")
+	if bg.BackdropPath != "" {
+		_, err = tx.Exec("UPDATE movies SET bgpath = ? WHERE id = ?", bg.BackdropPath, id)
+		if err != nil {
+			log.Printf("Warning: failed to update background path: %v", err)
+		}
 	}
 
+	// Commit the transaction
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %v", err)
+	}
+
+	return nil
 }
 
 type MovieSearchResponse struct {
@@ -205,8 +239,8 @@ type MovieSearchResponse struct {
 }
 
 func getMovieID(movieName string) (int, error) {
-
-	searchURL := fmt.Sprintf("https://api.themoviedb.org/3/search/movie?query=%s&api_key=%s", url.QueryEscape(movieName), apikey)
+	searchURL := fmt.Sprintf("https://api.themoviedb.org/3/search/movie?query=%s&api_key=%s",
+		url.QueryEscape(movieName), apikey)
 
 	resp, err := http.Get(searchURL)
 	if err != nil {
@@ -215,8 +249,9 @@ func getMovieID(movieName string) (int, error) {
 	defer resp.Body.Close()
 
 	var searchResults MovieSearchResponse
-	body, _ := io.ReadAll(resp.Body)
-	json.Unmarshal(body, &searchResults)
+	if err := json.NewDecoder(resp.Body).Decode(&searchResults); err != nil {
+		return 0, err
+	}
 
 	if len(searchResults.Results) == 0 {
 		return 0, fmt.Errorf("no movie found with name: %s", movieName)
@@ -224,41 +259,6 @@ func getMovieID(movieName string) (int, error) {
 
 	return searchResults.Results[0].ID, nil
 }
-
-// code to fetch details
-type MovieDetails struct {
-	Title       string  `json:"title"`
-	Overview    string  `json:"overview"`
-	ReleaseDate string  `json:"release_date"`
-	Genres      []Genre `json:"genres"`
-	Runtime     int     `json:"runtime"`
-	Rating      float64 `json:"vote_average"`
-	Country     string  `json:"production_countries,omitempty"`
-}
-
-type Genre struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-}
-
-func getMovieDetails(movieID int) (MovieDetails, error) {
-	apiURL := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d?api_key=%s", movieID, apikey)
-
-	resp, err := http.Get(apiURL)
-	if err != nil {
-		return MovieDetails{}, err
-	}
-	defer resp.Body.Close()
-
-	var details MovieDetails
-	if err := json.NewDecoder(resp.Body).Decode(&details); err != nil {
-		return MovieDetails{}, err
-	}
-
-	return details, nil
-}
-
-//Code to fetch credits
 
 type CreditResponse struct {
 	Cast []struct {
@@ -272,7 +272,8 @@ type CreditResponse struct {
 }
 
 func getMovieCredits(movieID int) (CreditResponse, error) {
-	apiURL := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d/credits?api_key=%s", movieID, apikey)
+	apiURL := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d/credits?api_key=%s",
+		movieID, apikey)
 
 	resp, err := http.Get(apiURL)
 	if err != nil {
@@ -288,20 +289,71 @@ func getMovieCredits(movieID int) (CreditResponse, error) {
 	return credits, nil
 }
 
-func CreateChat() {
-	dropTableSQL := `DROP TABLE IF EXISTS chat;`
-	_, err := db.Exec(dropTableSQL)
+type Review struct {
+	Author  string  `json:"author"`
+	Content string  `json:"content"`
+	Rating  float64 `json:"rating"`
+}
+
+func getMovieReviews(movieID int) ([]Review, error) {
+	apiURL := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d/reviews?api_key=%s",
+		movieID, apikey)
+
+	resp, err := http.Get(apiURL)
 	if err != nil {
-		log.Println("Error dropping tables:", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var response struct {
+		Results []Review `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, err
 	}
 
-	_, err = db.Exec(`CREATE TABLE chats (
-		username TEXT NOT NULL,
-		message TEXT NOT NULL
-	);`)
+	return response.Results, nil
+}
+
+type BgResponse struct {
+	BackdropPath string `json:"backdrop_path"`
+}
+
+func GetMovieBg(MovieID int) BgResponse {
+	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d?api_key=%s", MovieID, apikey)
+	resp, err := http.Get(url)
 	if err != nil {
-		log.Println("Error creating movies chats table:", err)
+		log.Printf("Warning: failed to fetch backdrop: %v", err)
+		return BgResponse{}
 	}
+	defer resp.Body.Close()
+
+	var bgdata BgResponse
+	if err := json.NewDecoder(resp.Body).Decode(&bgdata); err != nil {
+		log.Printf("Warning: failed to decode backdrop JSON: %v", err)
+		return BgResponse{}
+	}
+
+	return bgdata
+}
+
+func GetAllMovies() ([]string, error) {
+	rows, err := db.Query(`SELECT title FROM movies`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch movies: %v", err)
+	}
+	defer rows.Close()
+
+	var movies []string
+	for rows.Next() {
+		var title string
+		if err := rows.Scan(&title); err != nil {
+			return nil, fmt.Errorf("error scanning row: %v", err)
+		}
+		movies = append(movies, title)
+	}
+
+	return movies, nil
 }
 
 type MovieResponse struct {
@@ -324,46 +376,17 @@ type MovieResponse struct {
 	Reviews []Review `json:"reviews"`
 }
 
-type Review struct {
-	Author  string  `json:"author"`
-	Content string  `json:"content"`
-	Rating  float64 `json:"rating"`
-}
-
-func getMovieReviews(movieID int) ([]Review, error) {
-	apiURL := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d/reviews?api_key=%s", movieID, apikey)
-
-	resp, err := http.Get(apiURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var response struct {
-		Results []Review `json:"results"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, err
-	}
-
-	return response.Results, nil
-}
-
-// Function to get all movie details as JSON
 func GetMovieInfo(movieName string) (string, error) {
-	// Fetch movie ID
 	id, err := getMovieID(movieName)
 	if err != nil {
 		return "", fmt.Errorf("movie not found: %v", err)
 	}
 
-	// Fetch movie details
 	details, err := getMovieDetails(id)
 	if err != nil {
 		return "", fmt.Errorf("movie details not found: %v", err)
 	}
 
-	// Fetch cast and crew details
 	credits, err := getMovieCredits(id)
 	if err != nil {
 		return "", fmt.Errorf("movie credits not found: %v", err)
@@ -371,10 +394,9 @@ func GetMovieInfo(movieName string) (string, error) {
 
 	reviews, err := getMovieReviews(id)
 	if err != nil {
-		log.Println("Error fetching reviews:", err)
+		log.Printf("Warning: failed to fetch reviews: %v", err)
 	}
 
-	// Fetch bgpath
 	bg := GetMovieBg(id)
 
 	genreNames := make([]string, len(details.Genres))
@@ -382,7 +404,11 @@ func GetMovieInfo(movieName string) (string, error) {
 		genreNames[i] = genre.Name
 	}
 
-	// Create response struct
+	country := ""
+	if len(details.ProductionCountries) > 0 {
+		country = details.ProductionCountries[0].Name
+	}
+
 	response := MovieResponse{
 		Title:       details.Title,
 		Overview:    details.Overview,
@@ -391,65 +417,16 @@ func GetMovieInfo(movieName string) (string, error) {
 		Genres:      genreNames,
 		Runtime:     details.Runtime,
 		Rating:      details.Rating,
-		Country:     details.Country,
+		Country:     country,
 		Cast:        credits.Cast,
 		Crew:        credits.Crew,
 		Reviews:     reviews,
 	}
 
-	// Convert to JSON
 	jsonResponse, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("error encoding JSON: %v", err)
 	}
 
 	return string(jsonResponse), nil
-}
-
-type BgResponse struct {
-	BackdropPath string `json:"backdrop_path"`
-}
-
-func GetMovieBg(MovieID int) BgResponse {
-	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d?api_key=%s", MovieID, apikey)
-	resp, err := http.Get(url)
-	if err != nil {
-		fmt.Println("Fetching backdrop failed")
-	}
-	defer resp.Body.Close()
-
-	var bgdata BgResponse
-	err = json.NewDecoder(resp.Body).Decode(&bgdata)
-	if err != nil {
-		fmt.Println("Failed to decode JSON:", err)
-		return bgdata
-	}
-
-	if bgdata.BackdropPath == "" {
-		fmt.Println("No backdrop path found for movie ID:", MovieID)
-		return bgdata
-	}
-	return bgdata
-
-}
-
-func GetAllMovies() []string {
-	rows, err := db.Query(`SELECT title FROM movies`)
-	if err != nil {
-		fmt.Println("Movie fetching failed:", err)
-		return nil
-	}
-	defer rows.Close()
-
-	var movies []string
-	for rows.Next() {
-		var title string
-		if err := rows.Scan(&title); err != nil {
-			fmt.Println("Error scanning row:", err)
-			continue
-		}
-		movies = append(movies, title)
-	}
-
-	return movies
 }

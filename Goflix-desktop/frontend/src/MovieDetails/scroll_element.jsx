@@ -2,35 +2,35 @@ import React, { useRef, useEffect } from "react";
 import ProfileCard from "./profile_card";
 
 const ChevronLeft = ({ size = 30, className = "" }) => (
-    <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        viewBox="0 0 24 24" 
-        fill="currentColor" 
-        width={size} 
-        height={size} 
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        width={size}
+        height={size}
         className={className}
     >
-        <path 
-            fillRule="evenodd" 
-            d="M15.71 17.71a1 1 0 0 1-1.42 0l-5-5a1 1 0 0 1 0-1.42l5-5a1 1 0 1 1 1.42 1.42L11.41 12l4.3 4.29a1 1 0 0 1 0 1.42Z" 
-            clipRule="evenodd" 
+        <path
+            fillRule="evenodd"
+            d="M15.71 17.71a1 1 0 0 1-1.42 0l-5-5a1 1 0 0 1 0-1.42l5-5a1 1 0 1 1 1.42 1.42L11.41 12l4.3 4.29a1 1 0 0 1 0 1.42Z"
+            clipRule="evenodd"
         />
     </svg>
 );
 
 const ChevronRight = ({ size = 30, className = "" }) => (
-    <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        viewBox="0 0 24 24" 
-        fill="currentColor" 
-        width={size} 
-        height={size} 
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        width={size}
+        height={size}
         className={className}
     >
-        <path 
-            fillRule="evenodd" 
-            d="M8.29 17.71a1 1 0 0 1 0-1.42L12.59 12l-4.3-4.29a1 1 0 0 1 1.42-1.42l5 5a1 1 0 0 1 0 1.42l-5 5a1 1 0 0 1-1.42 0Z" 
-            clipRule="evenodd" 
+        <path
+            fillRule="evenodd"
+            d="M8.29 17.71a1 1 0 0 1 0-1.42L12.59 12l-4.3-4.29a1 1 0 0 1 1.42-1.42l5 5a1 1 0 0 1 0 1.42l-5 5a1 1 0 0 1-1.42 0Z"
+            clipRule="evenodd"
         />
     </svg>
 );
@@ -50,7 +50,7 @@ const ScrollElement = () => {
         { imageUrl: "https://cdn.britannica.com/37/255737-050-9BB3FEDA/Christopher-Nolan-Movie-film-director-Oppenheimer-UK-premiere-2023.jpg", name: "Jessica Chastain", role: "Murph" },
         { imageUrl: "https://cdn.britannica.com/37/255737-050-9BB3FEDA/Christopher-Nolan-Movie-film-director-Oppenheimer-UK-premiere-2023.jpg", name: "Michael Caine", role: "Professor Brand" },
         { imageUrl: "https://cdn.britannica.com/37/255737-050-9BB3FEDA/Christopher-Nolan-Movie-film-director-Oppenheimer-UK-premiere-2023.jpg", name: "Michael Caine", role: "Professor Brand" },
-      ];
+    ];
 
     const scroll = (direction) => {
         if (scrollRef.current) {
