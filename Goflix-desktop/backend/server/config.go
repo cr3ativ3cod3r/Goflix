@@ -96,14 +96,14 @@ func streamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	videoPath := db.GetVideoPath(videoId)
+	videoPath,_ := db.GetVideoPath(videoId)
 	if videoPath == "" {
 		http.Error(w, "Video not found", http.StatusNotFound)
 		return
 	}
 
 	log.Println("Video ID:", videoId)
-	log.Println("Video Path:", db.GetVideoPath(videoId))
+	// log.Println("Video Path:", db.GetVideoPath(videoId))
 
 	post_url := "http://localhost:8081/register"
 

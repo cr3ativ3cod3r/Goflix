@@ -8,7 +8,7 @@ import (
 func ClientHome() []string {
 
 	var responses []string // Define responses slice
-	movies := db.GetAllMovies()
+	movies,_ := db.GetAllMovies()
 
 	for _, title := range movies { // Iterate over movie titles
 		movieInfo, err := db.GetMovieInfo(title) // Pass title instead of index

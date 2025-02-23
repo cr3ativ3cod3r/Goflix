@@ -106,7 +106,7 @@ func initializeTables() error {
 		`CREATE TABLE IF NOT EXISTS chats (
             username TEXT NOT NULL,
             message TEXT NOT NULL
-        )`
+        )`,
 	}
 
 	for _, table := range tables {
@@ -429,4 +429,21 @@ func GetMovieInfo(movieName string) (string, error) {
 	}
 
 	return string(jsonResponse), nil
+}
+
+func getMovieDetails(movieID int) (MovieDetails, error) {
+	apiURL := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d?api_key=%s", movieID, apikey)
+
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		return MovieDetails{}, err
+	}
+	defer resp.Body.Close()
+
+	var details MovieDetails
+	if err := json.NewDecoder(resp.Body).Decode(&details); err != nil {
+		return MovieDetails{}, err
+	}
+
+	return details, nil
 }
