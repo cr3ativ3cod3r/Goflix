@@ -63,7 +63,7 @@ Goflix is a self-hosted media streaming platform built using Golang, designed to
 
 We welcome contributions! Feel free to fork the repo, open issues, or submit pull requests.
 
-##Video demo
+## Video demo
 [demo](https://drive.google.com/drive/folders/1_OsITmUiQ-bGPnKznMP3zT6xbE7j8EFP)
 
 ## License
