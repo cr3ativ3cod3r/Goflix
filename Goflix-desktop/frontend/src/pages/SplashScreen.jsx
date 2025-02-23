@@ -20,6 +20,15 @@ export function SplashScreen() {
         };
     }, []);
 
+    const StartServer=()=>{
+
+        try {
+            window.go.main.App.StartBackend();
+        }catch (e) {
+            console.log(e)
+        }
+    }
+
     return (
         <div className="min-h-screen min-w-full relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
             {/* Background animation */}
@@ -56,6 +65,9 @@ export function SplashScreen() {
                                 className={`group relative px-16 py-4 text-white font-semibold rounded-lg text-xl
                   ${i === 0 ? 'animate-slide-left' : 'animate-slide-right'}
                   transform hover:scale-105 active:scale-95 transition-all duration-300 ease-out`}
+                                onClick={()=>{
+                                    StartServer()
+                                }}
                             >
                                 {/* Button background */}
                                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg opacity-80 group-hover:opacity-100 transition-opacity duration-300" />

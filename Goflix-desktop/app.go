@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Goflix-Desktop/backend/server"
 	"context"
 	"fmt"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -66,4 +67,11 @@ func (a *App) SelectDirectory() (string, error) {
 		return "", err
 	}
 	return dir, nil
+}
+
+func (a *App) StartBackend() error {
+	go func() {
+		server.CreateServer()
+	}()
+	return nil
 }

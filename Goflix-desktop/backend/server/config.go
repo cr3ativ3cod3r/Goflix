@@ -1,7 +1,6 @@
 package server
 
 import (
-	//"database/sql"
 	"Goflix-Desktop/backend/chats"
 	"Goflix-Desktop/backend/db"
 	"Goflix-Desktop/backend/handlers"
@@ -14,8 +13,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gorilla/mux"
-	//"github.com/gorilla/mux"
-	//"modernc.org/sqlite"
 )
 
 type RequestData struct {
@@ -25,46 +22,51 @@ type RequestData struct {
 	} `json:"items"`
 }
 
+var chatServer *chats.ChatServer
+
 func CreateServer() {
 	db.Connect()
+
+	// Initialize the chat server
+	chatServer = chats.NewChatServer()
+	chatServer.Start()
+
 	// Create a new router
 	r := mux.NewRouter()
 
-	//r.HandleFunc("/home",Home)
+	// Register routes
+	r.HandleFunc("/host/home", HostHome)
+	r.HandleFunc("/client/home", ClientHome)
+	r.HandleFunc("/{host}/chat", handleChat)
+	r.HandleFunc("/stream/{videoId}", streamHandler)
 
 	fmt.Println("Server is running on http://localhost:8080")
-	http.HandleFunc("/{host}/chat", chatHandler)
 	log.Fatal(http.ListenAndServe(":8080", r))
-
 }
 
 func HostHome(w http.ResponseWriter, r *http.Request) {
 	var data RequestData
-	var responses []string // Slice to store multiple responses
+	var responses []string
 
-	// Decode JSON
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return // Stop execution if JSON decoding fails
+		return
 	}
 
-	// Iterate over the list and call AddMovieDetails
 	for _, item := range data.Items {
-		db.AddMovieDetails(item.Name, item.Path) // Assuming AddMovieDetails takes two arguments
+		db.AddMovieDetails(item.Name, item.Path)
 	}
 
-	// Fetch movie details
 	for _, item := range data.Items {
-		movieInfo, err := db.GetMovieInfo(item.Name) // Assuming GetMovieInfo returns (db.MovieResponse, error)
+		movieInfo, err := db.GetMovieInfo(item.Name)
 		if err != nil {
 			log.Println("Error fetching movie info:", err)
-			continue // Skip this movie if there's an error
+			continue
 		}
-		responses = append(responses, movieInfo) // Correct way to append to a slice
+		responses = append(responses, movieInfo)
 	}
 
-	// Convert response to JSON
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(responses)
 	if err != nil {
@@ -73,17 +75,16 @@ func HostHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func ClientHome(w http.ResponseWriter, r *http.Request) {
-
+	// Implement client home logic here
 }
 
-func chatHandler(w http.ResponseWriter, r *http.Request) {
-	host := mux.Vars(r)["host"]
-
-	chats.WsHandler(w, r, host)
+func handleChat(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	host := vars["host"]
+	chatServer.HandleWebSocket(w, r, host)
 }
 
 func streamHandler(w http.ResponseWriter, r *http.Request) {
-	// Get the video path
 	vars := mux.Vars(r)
 	videoIdStr := vars["videoId"]
 	videoId, err := strconv.Atoi(videoIdStr)
@@ -96,7 +97,4 @@ func streamHandler(w http.ResponseWriter, r *http.Request) {
 		videoPath := db.GetVdeoPath(videoId)
 		return handlers.HandleVideoStream(c, videoPath)
 	})
-
-
 }
-
