@@ -6,7 +6,7 @@ import MovieCarousel from "../Home_page/Movie_carousel.jsx";
 
 const TMDB_IMG_BASE = "https://image.tmdb.org/t/p/original";
 
-function MovieDetails({ movie }) {
+function MovieDetails({ movie, onMoviePlay }) {
     const containerRef = useRef(null);
 
     useEffect(() => {
@@ -39,6 +39,11 @@ function MovieDetails({ movie }) {
         container.addEventListener("scroll", handleScroll);
         return () => container.removeEventListener("scroll", handleScroll);
     }, []);
+    const handlePlayMovie = () => {
+        if (onMoviePlay) {
+            onMoviePlay(movie.id);
+        }
+    };
 
     return (
         <div
@@ -55,7 +60,7 @@ function MovieDetails({ movie }) {
             }}
         >
             <div className="page" style={{ scrollSnapAlign: "start" }}><Page1 movie={movie} /></div>
-            <div className="page" style={{ scrollSnapAlign: "start" }}><Page2 movie={movie} /></div>
+            <div className="page" style={{ scrollSnapAlign: "start" }}><Page2 movie={movie} onMoviePlay={handlePlayMovie} /></div>
             <div className="page" style={{ scrollSnapAlign: "start" }}><Page3 movie={movie} /></div>
             <div className="page" style={{ scrollSnapAlign: "start" }}><Page4 movie={movie} /></div>
         </div>
@@ -94,7 +99,7 @@ function Page1({ movie }) {
 }
 
 // Page2.jsx
-function Page2({ movie }) {
+function Page2({ movie, onMoviePlay }) {
     return (
         <div className="container max-w-screen-xl mx-auto min-h-screen flex flex-col md:flex-row items-center justify-start text-white px-4">
             <div className="md:mr-12 w-80 flex-shrink-0">
@@ -113,7 +118,7 @@ function Page2({ movie }) {
                     {movie.overview}
                 </p>
                 <div className="flex items-center gap-4 mt-4">
-                    <button className="mt-6 px-16 py-4 bg-blue-600 hover:bg-blue-500 text-white text-2xl font-bold rounded-lg transition-all duration-300" onClick={()=>{}}>
+                    <button className="mt-6 px-16 py-4 bg-blue-600 hover:bg-blue-500 text-white text-2xl font-bold rounded-lg transition-all duration-300" onClick={onMoviePlay}>
                         ▶ PLAY
                     </button>
                     <div className="flex items-center gap-2">

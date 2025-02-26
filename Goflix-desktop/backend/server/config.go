@@ -25,6 +25,19 @@ type RequestData struct {
 var chatServer *chats.ChatServer
 var discoveryService *discovery.Service // Add this variable
 
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 func CreateServer() {
 	cmd := exec.Command("../helpers/stream-helper", "-port", "8081")
 	cmd.Stdout = log.Writer()
@@ -36,10 +49,9 @@ func CreateServer() {
 
 	db.Connect()
 
-	// Create a new router
 	r := mux.NewRouter()
+	r.Use(corsMiddleware)
 
-	// Register your specific routes FIRST
 	r.HandleFunc("/{videoId}/initStream", func(w http.ResponseWriter, r *http.Request) {
 		streamHandler(w, r)
 	})
@@ -51,7 +63,9 @@ func CreateServer() {
 	r.HandleFunc("/client/home", ClientHome).Methods("GET")
 
 	// Add a route for mDNS peer discovery
-	//
+	r.HandleFunc("/peers", func(w http.ResponseWriter, r *http.Request) {
+		discoveryService.PeersHandler(w, r)
+	}).Methods("GET")
 
 	// Initialize the chat server
 	chatServer = chats.NewChatServer()

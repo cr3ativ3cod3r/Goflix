@@ -56,7 +56,7 @@ const SubtitlesIcon = () => (
 );
 
 
-const VideoStreaming = ({movie_id}) => {
+const VideoStreaming = ({server, videoid}) => {
     const videoRef = useRef(null);
     const progressRef = useRef(null);
     const [error, setError] = useState(null);
@@ -68,7 +68,8 @@ const VideoStreaming = ({movie_id}) => {
     const [showChat, setShowChat] = useState(false);
     const [volume, setVolume] = useState(1);
 
-    const STREAM_URL = `http://localhost:8081/stream/${movie_id}`;
+    const STREAM_URL = `http://${server.ip}:8081/stream/${videoid}`;
+    console.log(STREAM_URL);
 
     useEffect(() => {
         const video = videoRef.current;
