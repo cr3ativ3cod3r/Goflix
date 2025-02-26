@@ -4,14 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/mdns"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
-
-	"github.com/hashicorp/mdns"
 )
 
 const (
@@ -57,6 +57,25 @@ func NewService(name string, port int) *Service {
 	}
 }
 
+// getLocalIP gets the non-loopback IPv4 address
+func getLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "127.0.0.1"
+	}
+
+	for _, address := range addrs {
+		// Check if it's not a loopback address
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+
+	return "127.0.0.1"
+}
+
 // Start initializes and starts the mDNS service
 func (s *Service) Start() error {
 	hostname, err := os.Hostname()
@@ -94,6 +113,28 @@ func (s *Service) Start() error {
 		return fmt.Errorf("failed to start mDNS server: %w", err)
 	}
 	s.server = server
+
+	// Add self as a peer to ensure we see ourselves in the list
+	formattedHostname := s.GetFormattedServiceName()
+	selfPeer := Peer{
+		Name:     formattedHostname + ".local",
+		Host:     formattedHostname + ".local",
+		Port:     s.port,
+		AddrIPv4: getLocalIP(),
+		LastSeen: time.Now(),
+		Metadata: map[string]string{
+			"version": "1.0",
+			"name":    s.name,
+			"self":    "true",
+		},
+		IsActive: true,
+	}
+
+	s.peersLock.Lock()
+	s.peers[formattedHostname] = selfPeer
+	s.peersLock.Unlock()
+
+	log.Printf("Added self as peer: %s at %s:%d", selfPeer.Name, selfPeer.AddrIPv4, selfPeer.Port)
 
 	// Start discovery and health check routines
 	go s.discoverPeers()
@@ -139,7 +180,8 @@ func (s *Service) discoverPeers() {
 }
 
 func (s *Service) processPeerEntry(entry *mdns.ServiceEntry) {
-	if !isPeerValid(entry) {
+	// Modified to accept all peers
+	if entry == nil || len(entry.Info) == 0 {
 		return
 	}
 
@@ -183,6 +225,14 @@ func (s *Service) healthCheck() {
 			now := time.Now()
 
 			for host, peer := range s.peers {
+				// Skip updating self
+				if peer.Metadata != nil && peer.Metadata["self"] == "true" {
+					// Just refresh the last seen time for self
+					peer.LastSeen = now
+					s.peers[host] = peer
+					continue
+				}
+
 				if now.Sub(peer.LastSeen) > refreshInterval*2 {
 					peer.IsActive = false
 					s.peers[host] = peer
@@ -228,9 +278,11 @@ func formatIPv4(ip net.IP) string {
 	return fmt.Sprintf("%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3])
 }
 
+// Modified to accept all peers
 func isPeerValid(entry *mdns.ServiceEntry) bool {
-	return entry != nil && len(entry.Info) > 0 && serviceInfo == string(entry.Info[0])
+	return entry != nil && len(entry.Info) > 0
 }
+
 func extractMetadata(info []string) map[string]string {
 	if len(info) < 2 {
 		return nil
@@ -279,5 +331,18 @@ func (s *Service) GetHostname() any {
 		return nil
 	}
 	return host_name
+}
 
+// GetFormattedServiceName returns the properly formatted mDNS service name
+func (s *Service) GetFormattedServiceName() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return ""
+	}
+	// This ensures the hostname doesn't include the domain part
+	// which is important for mDNS resolution
+	if idx := strings.Index(hostname, "."); idx > 0 {
+		hostname = hostname[:idx]
+	}
+	return hostname
 }

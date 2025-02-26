@@ -4,6 +4,7 @@ import (
 	"Goflix-Desktop/backend/chats"
 	"Goflix-Desktop/backend/clienthome"
 	"Goflix-Desktop/backend/db"
+	"Goflix-Desktop/backend/discovery" // Add this import
 	"bytes"
 	"encoding/json"
 	"log"
@@ -22,6 +23,7 @@ type RequestData struct {
 }
 
 var chatServer *chats.ChatServer
+var discoveryService *discovery.Service // Add this variable
 
 func CreateServer() {
 	cmd := exec.Command("../helpers/stream-helper", "-port", "8081")
@@ -48,12 +50,30 @@ func CreateServer() {
 
 	r.HandleFunc("/client/home", ClientHome).Methods("GET")
 
+	// Add a route for mDNS peer discovery
+	//
+
 	// Initialize the chat server
 	chatServer = chats.NewChatServer()
 	chatServer.Start()
 
+	// Initialize and start mDNS service - use a friendly name for your service
+	discoveryService = discovery.NewService("Goflix", 8080)
+	if err := discoveryService.Start(); err != nil {
+		log.Printf("Warning: Failed to start mDNS service: %v", err)
+	} else {
+		log.Println("mDNS service started successfully")
+		// Get the hostname that other devices should use
+		hostname := discoveryService.GetFormattedServiceName()
+		log.Printf("Service available at: http://%s.local:8080", hostname)
+	}
+
 	log.Println("Server is running on http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
+}
+
+func GetDiscoveryService() *discovery.Service {
+	return discoveryService
 }
 
 type VideoFile struct {
@@ -96,7 +116,7 @@ func streamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	videoPath,_ := db.GetVideoPath(videoId)
+	videoPath, _ := db.GetVideoPath(videoId)
 	if videoPath == "" {
 		http.Error(w, "Video not found", http.StatusNotFound)
 		return

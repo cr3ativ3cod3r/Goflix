@@ -113,7 +113,7 @@ function Page2({ movie }) {
                     {movie.overview}
                 </p>
                 <div className="flex items-center gap-4 mt-4">
-                    <button className="mt-6 px-16 py-4 bg-blue-600 hover:bg-blue-500 text-white text-2xl font-bold rounded-lg transition-all duration-300">
+                    <button className="mt-6 px-16 py-4 bg-blue-600 hover:bg-blue-500 text-white text-2xl font-bold rounded-lg transition-all duration-300" onClick={()=>{}}>
                         ▶ PLAY
                     </button>
                     <div className="flex items-center gap-2">

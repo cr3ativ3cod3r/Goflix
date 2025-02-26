@@ -10,6 +10,10 @@ export function ClientStreamHandler(arg1, arg2) {
   return window['go']['main']['App']['ClientStreamHandler'](arg1, arg2);
 }
 
+export function GetPeers() {
+  return window['go']['main']['App']['GetPeers']();
+}
+
 export function GetVideosFromDirectory(arg1) {
   return window['go']['main']['App']['GetVideosFromDirectory'](arg1);
 }

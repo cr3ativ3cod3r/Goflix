@@ -26,10 +26,10 @@ type App struct {
 
 func (a *App) OnShutdown(ctx context.Context) {
 	log.Println("Application is shutting down. Cleaning up resources...")
-	cmd := exec.Command("pkill", "stream-helper",)
+	cmd := exec.Command("pkill", "stream-helper")
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
-	
+
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("Failed to stop stream-helper: %v", err)
 	}
@@ -117,22 +117,62 @@ func (a *App) AddDataHost(videos []Video) ([]string, error) {
 }
 
 type StreamResponse struct {
-    StatusCode int    `json:"statusCode"`
-    URL        string `json:"url"`
-    Message    string `json:"message"`
+	StatusCode int    `json:"statusCode"`
+	URL        string `json:"url"`
+	Message    string `json:"message"`
 }
 
 func (a *App) ClientStreamHandler(ip string, videoId string) (StreamResponse, error) {
-    url := "http://" + ip + "/" + videoId + "/initStream"
-    resp, err := http.Get(url)
-    if err != nil {
-        return StreamResponse{}, err
-    }
-    defer resp.Body.Close()
+	url := "http://" + ip + "/" + videoId + "/initStream"
+	resp, err := http.Get(url)
+	if err != nil {
+		return StreamResponse{}, err
+	}
+	defer resp.Body.Close()
 
-    return StreamResponse{
-        StatusCode: resp.StatusCode,
-        URL:        url,
-        Message:    "Stream request sent successfully",
-    }, nil
+	return StreamResponse{
+		StatusCode: resp.StatusCode,
+		URL:        url,
+		Message:    "Stream request sent successfully",
+	}, nil
+}
+
+// GetPeers returns all active peers from the discovery service
+func (a *App) GetPeers() ([]map[string]interface{}, error) {
+
+	println("this was here trying to find peers")
+	// Get the discovery service instance
+	discoveryService := server.GetDiscoveryService()
+	if discoveryService == nil {
+		return nil, fmt.Errorf("discovery service not initialized")
+	}
+
+	// Get peers from the discovery service
+	peers := discoveryService.GetPeers()
+
+	// Convert to a format suitable for frontend
+	result := make([]map[string]interface{}, 0, len(peers))
+	for _, peer := range peers {
+		peerMap := map[string]interface{}{
+			"name":     peer.Name,
+			"host":     peer.Host,
+			"port":     peer.Port,
+			"addrIPv4": peer.AddrIPv4,
+			"lastSeen": peer.LastSeen,
+			"isActive": peer.IsActive,
+		}
+
+		if peer.Metadata != nil {
+			peerMap["metadata"] = peer.Metadata
+			if peer.Metadata["self"] == "true" {
+				peerMap["isSelf"] = true
+			} else {
+				peerMap["isSelf"] = false
+			}
+		}
+
+		result = append(result, peerMap)
+	}
+	println("again it was here but lets see if it ca return something")
+	return result, nil
 }
