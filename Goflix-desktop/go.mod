@@ -5,7 +5,7 @@ go 1.23
 require (
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/mdns v1.0.6
-	github.com/wailsapp/wails/v2 v2.10.0
+	github.com/wailsapp/wails/v2 v2.10.1
 )
 
 require (

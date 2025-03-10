@@ -17,7 +17,7 @@ import (
 const (
 	ServiceName     = "_goflix._tcp"
 	domain          = "local."
-	refreshInterval = 60 * time.Second
+	refreshInterval = 5 * time.Second
 	serviceInfo     = "Goflix P2P Media Server"
 )
 
