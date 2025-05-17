@@ -1,12 +1,12 @@
 package db
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"sync"
 
@@ -20,14 +20,15 @@ var (
 	mu     sync.Mutex
 )
 
-// MovieDetails struct update to handle production countries correctly
+var tmdburl = "https://tmdb-csk2.shuttle.app/tmdb"
+
 type MovieDetails struct {
-	Title              string  `json:"title"`
-	Overview           string  `json:"overview"`
-	ReleaseDate        string  `json:"release_date"`
-	Genres             []Genre `json:"genres"`
-	Runtime            int     `json:"runtime"`
-	Rating             float64 `json:"vote_average"`
+	Title               string  `json:"title"`
+	Overview            string  `json:"overview"`
+	ReleaseDate         string  `json:"release_date"`
+	Genres              []Genre `json:"genres"`
+	Runtime             int     `json:"runtime"`
+	Rating              float64 `json:"vote_average"`
 	ProductionCountries []struct {
 		Name string `json:"name"`
 	} `json:"production_countries"`
@@ -239,13 +240,20 @@ type MovieSearchResponse struct {
 }
 
 func getMovieID(movieName string) (int, error) {
-	searchURL := fmt.Sprintf("https://api.themoviedb.org/3/search/movie?query=%s&api_key=%s",
-		url.QueryEscape(movieName), apikey)
-
-	resp, err := http.Get(searchURL)
-	if err != nil {
-		return 0, err
+	bodyData := map[string]string{
+		"url": fmt.Sprintf("search/movie?query=%s&api_key=%s", movieName, apikey),
 	}
+
+	jsonBody, err := json.Marshal(bodyData)
+	if err != nil {
+		panic(err)
+	}
+
+	resp, err := http.Post(tmdburl, "application/json", bytes.NewBuffer(jsonBody))
+	if err != nil {
+		panic(err)
+	}
+
 	defer resp.Body.Close()
 
 	var searchResults MovieSearchResponse
@@ -272,10 +280,16 @@ type CreditResponse struct {
 }
 
 func getMovieCredits(movieID int) (CreditResponse, error) {
-	apiURL := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d/credits?api_key=%s",
-		movieID, apikey)
+	bodyData := map[string]string{
+		"url": fmt.Sprintf("movie/%d/credits?api_key=%s", movieID, apikey),
+	}
 
-	resp, err := http.Get(apiURL)
+	jsonBody, err := json.Marshal(bodyData)
+	if err != nil {
+		panic(err)
+	}
+
+	resp, err := http.Post(tmdburl, "application/json", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return CreditResponse{}, err
 	}
@@ -296,10 +310,17 @@ type Review struct {
 }
 
 func getMovieReviews(movieID int) ([]Review, error) {
-	apiURL := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d/reviews?api_key=%s",
-		movieID, apikey)
+	bodyData := map[string]string{
+		"url": fmt.Sprintf("movie/%d/reviews?api_key=%s", movieID, apikey),
+	}
 
-	resp, err := http.Get(apiURL)
+	jsonBody, err := json.Marshal(bodyData)
+	if err != nil {
+		panic(err)
+	}
+
+	resp, err := http.Post(tmdburl, "application/json", bytes.NewBuffer(jsonBody))
+
 	if err != nil {
 		return nil, err
 	}
@@ -319,9 +340,18 @@ type BgResponse struct {
 	BackdropPath string `json:"backdrop_path"`
 }
 
-func GetMovieBg(MovieID int) BgResponse {
-	url := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d?api_key=%s", MovieID, apikey)
-	resp, err := http.Get(url)
+func GetMovieBg(movieID int) BgResponse {
+	bodyData := map[string]string{
+		"url": fmt.Sprintf("movie/%d?api_key=%s", movieID, apikey),
+	}
+
+	jsonBody, err := json.Marshal(bodyData)
+	if err != nil {
+		panic(err)
+	}
+
+	resp, err := http.Post(tmdburl, "application/json", bytes.NewBuffer(jsonBody))
+
 	if err != nil {
 		log.Printf("Warning: failed to fetch backdrop: %v", err)
 		return BgResponse{}
@@ -432,9 +462,16 @@ func GetMovieInfo(movieName string) (string, error) {
 }
 
 func getMovieDetails(movieID int) (MovieDetails, error) {
-	apiURL := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d?api_key=%s", movieID, apikey)
+	bodyData := map[string]string{
+		"url": fmt.Sprintf("movie/%d?api_key=%s", movieID, apikey),
+	}
 
-	resp, err := http.Get(apiURL)
+	jsonBody, err := json.Marshal(bodyData)
+	if err != nil {
+		panic(err)
+	}
+
+	resp, err := http.Post(tmdburl, "application/json", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return MovieDetails{}, err
 	}

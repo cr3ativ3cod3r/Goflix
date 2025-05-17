@@ -110,6 +110,7 @@ func (a *App) AddDataHost(videos []Video) ([]string, error) {
 
 	responses, err := server.HostHome(videoFiles)
 	if err != nil {
+
 		return nil, fmt.Errorf("error in HostHome: %v", err)
 	}
 
