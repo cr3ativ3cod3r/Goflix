@@ -15,29 +15,11 @@ import (
 )
 
 var (
-	db     *sql.DB
-	apikey string
-	mu     sync.Mutex
+	db      *sql.DB
+	apikey  string
+	mu      sync.Mutex
+	tmdburl = "https://tmdb-csk2.shuttle.app/tmdb"
 )
-
-var tmdburl = "https://tmdb-csk2.shuttle.app/tmdb"
-
-type MovieDetails struct {
-	Title               string  `json:"title"`
-	Overview            string  `json:"overview"`
-	ReleaseDate         string  `json:"release_date"`
-	Genres              []Genre `json:"genres"`
-	Runtime             int     `json:"runtime"`
-	Rating              float64 `json:"vote_average"`
-	ProductionCountries []struct {
-		Name string `json:"name"`
-	} `json:"production_countries"`
-}
-
-type Genre struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-}
 
 func Connect() error {
 	var err error
@@ -231,14 +213,6 @@ func AddMovieDetails(movie, path string) error {
 	return nil
 }
 
-type MovieSearchResponse struct {
-	Results []struct {
-		ID    int    `json:"id"`
-		Title string `json:"title"`
-		Year  string `json:"release_date"`
-	} `json:"results"`
-}
-
 func getMovieID(movieName string) (int, error) {
 	bodyData := map[string]string{
 		"url": fmt.Sprintf("search/movie?query=%s&api_key=%s", movieName, apikey),
@@ -268,17 +242,6 @@ func getMovieID(movieName string) (int, error) {
 	return searchResults.Results[0].ID, nil
 }
 
-type CreditResponse struct {
-	Cast []struct {
-		Name      string `json:"name"`
-		Character string `json:"character"`
-	} `json:"cast"`
-	Crew []struct {
-		Name string `json:"name"`
-		Job  string `json:"job"`
-	} `json:"crew"`
-}
-
 func getMovieCredits(movieID int) (CreditResponse, error) {
 	bodyData := map[string]string{
 		"url": fmt.Sprintf("movie/%d/credits?api_key=%s", movieID, apikey),
@@ -301,12 +264,6 @@ func getMovieCredits(movieID int) (CreditResponse, error) {
 	}
 
 	return credits, nil
-}
-
-type Review struct {
-	Author  string  `json:"author"`
-	Content string  `json:"content"`
-	Rating  float64 `json:"rating"`
 }
 
 func getMovieReviews(movieID int) ([]Review, error) {
@@ -334,10 +291,6 @@ func getMovieReviews(movieID int) ([]Review, error) {
 	}
 
 	return response.Results, nil
-}
-
-type BgResponse struct {
-	BackdropPath string `json:"backdrop_path"`
 }
 
 func GetMovieBg(movieID int) BgResponse {
@@ -384,26 +337,6 @@ func GetAllMovies() ([]string, error) {
 	}
 
 	return movies, nil
-}
-
-type MovieResponse struct {
-	Title       string   `json:"title"`
-	Overview    string   `json:"overview"`
-	ReleaseDate string   `json:"release_date"`
-	Bgpath      string   `json:"bg_path"`
-	Genres      []string `json:"genres"`
-	Runtime     int      `json:"runtime"`
-	Rating      float64  `json:"rating"`
-	Country     string   `json:"country"`
-	Cast        []struct {
-		Name      string `json:"name"`
-		Character string `json:"character"`
-	} `json:"cast"`
-	Crew []struct {
-		Name string `json:"name"`
-		Job  string `json:"job"`
-	} `json:"crew"`
-	Reviews []Review `json:"reviews"`
 }
 
 func GetMovieInfo(movieName string) (string, error) {
